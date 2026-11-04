@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>La Carrera de la Descarbonización: 2000–2025</title>
+  <!-- Fuente tipográfica moderna -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <!-- D3.js y TopoJSON para renderizado de mapas con zoom y arrastre -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+  <!-- Protobject Framework para Sensor Físico Tangible -->
+  <script src="https://app.protobject.com/framework/p.js"></script>
+  <script src="config.js"></script>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Columna Izquierda: Mapa Interactivo de América (Globo Terráqueo) -->
+    <section class="map-section">
+      <!-- Badge de Estado del Sensor Físico Protobject -->
+      <div id="protobject-badge" class="protobject-badge">
+        <span class="protobject-dot" id="protobject-dot"></span>
+        <span id="protobject-status-text">Sensor Mano: Esperando conexión</span>
+        <div class="protobject-links">
+          <a href="hand.html" target="_blank" class="protobject-link" title="Abrir cámara del sensor">📱 Abrir Sensor</a>
+          <a href="mapa_imprimible.html" target="_blank" class="protobject-link" title="Imprimir plantilla del mapa físico">🖨️ Mapa Imprimible</a>
+        </div>
+      </div>
+      <!-- Cursor visual para feedback en vivo del dedo sobre el mapa físico -->
+      <div id="physical-finger-cursor" class="physical-finger-cursor" style="display: none;">
+        <div class="finger-dot"></div>
+        <div class="finger-label" id="finger-hover-label">Dedo detectado</div>
+      </div>
+      <div class="map-controls">
+        <button id="btn-zoom-in" title="Acercar" aria-label="Acercar mapa">+</button>
+        <button id="btn-zoom-out" title="Alejar" aria-label="Alejar mapa">−</button>
+        <button id="btn-reset-view" title="Reiniciar vista" aria-label="Reiniciar vista">↺</button>
+      </div>
+      <div id="map-container" class="map-container">
+        <!-- SVG renderizado dinámicamente con D3 -->
+      </div>
+      <div class="map-zones-legend">
+        <span class="zone-pill-item"><span class="zone-color-dot" style="background:#f97316;"></span> Norteamérica</span>
+        <span class="zone-pill-item"><span class="zone-color-dot" style="background:#10b981;"></span> Centroamérica & Caribe</span>
+        <span class="zone-pill-item"><span class="zone-color-dot" style="background:#0284c7;"></span> Sudamérica</span>
+      </div>
+      <div class="map-hint">
+        <span>🖱️ Arrastra para girar en 360° • Rueda para hacer zoom</span>
+      </div>
+      <div id="map-tooltip" class="map-tooltip" style="display: none;"></div>
+    </section>
+
+    <!-- Columna Derecha: Panel de Información y Acciones -->
+    <aside class="panel-section">
+      <header class="panel-header">
+        <div class="panel-header-left">
+          <span class="badge">Visualización de Información</span>
+          <h1>La Carrera de la Descarbonización</h1>
+          <p class="subtitle">2000 – 2025 • Enfoque Temporal y Velocidad</p>
+        </div>
+        <!-- País Seleccionado movido al header a la derecha (zona verde) para ahorrar espacio vertical -->
+        <div id="header-country-badge" class="header-country-badge" style="display: none;">
+          <span class="country-pill">País Seleccionado</span>
+          <h2 id="selected-country-name">Estados Unidos</h2>
+        </div>
+      </header>
+
+      <!-- Vista 1: Breve Explicación e Indicación Inicial (Plano Base) -->
+      <div id="view-intro" class="panel-view active">
+        <div class="concept-card">
+          <h2 class="card-title">Concepto Narrativo</h2>
+          <p class="card-description">
+            Una competencia sobre qué tan rápido han avanzado (o retrocedido) los países de la América en sustituir las fuentes fósiles por renovables directas.
+          </p>
+        </div>
+
+        <div class="question-card">
+          <h3 class="card-subtitle">Pregunta de Diseño</h3>
+          <p class="design-question">
+            «¿Quiénes lideran la transición energética en el continente y qué países se quedaron estancados en la era del carbón y el gas?»
+          </p>
+        </div>
+
+        <!-- 1. Botón Top 5 Pesos Pesados de Generación Eléctrica (Arriba) -->
+        <div class="top-ranking-toggle">
+          <button id="btn-show-top-gen" class="btn btn-ranking btn-ranking-gen">
+            <span class="btn-icon">⚡</span>
+            <span class="btn-label">Ver Pesos Pesados de Generación Eléctrica</span>
+          </button>
+        </div>
+
+        <!-- Contenedor desplegable del Top Generación -->
+        <div id="top-gen-container" class="top5-container" style="display: none;">
+          <div class="top5-tabs">
+            <button id="tab-gen-gigantes" class="tab-btn active">🐘 Mayores Productores (TWh)</button>
+            <button id="tab-gen-menores" class="tab-btn">🌱 Menores Productores (TWh)</button>
+          </div>
+          <div id="top-gen-list" class="top5-list">
+            <!-- Items de generación renderizados dinámicamente -->
+          </div>
+        </div>
+
+        <!-- 2. Botón Top 5 Transición Renovable (Abajo) -->
+        <div class="top-ranking-toggle">
+          <button id="btn-show-top5" class="btn btn-ranking">
+            <span class="btn-icon">🏆</span>
+            <span class="btn-label">Ver Top 5 Transición Renovable</span>
+          </button>
+        </div>
+
+        <!-- Contenedor desplegable del Top 5 -->
+        <div id="top5-container" class="top5-container" style="display: none;">
+          <div class="top5-tabs">
+            <button id="tab-top-mayor" class="tab-btn active">⚡ Mayor Avance (+)</button>
+            <button id="tab-top-menor" class="tab-btn">⚠️ Menor Avance / Retroceso (−)</button>
+          </div>
+          <div id="top5-list" class="top5-list">
+            <!-- Items renderizados dinámicamente -->
+          </div>
+        </div>
+
+        <div class="indicator-box">
+          <div class="indicator-icon">👈</div>
+          <div class="indicator-text">
+            <strong>Selecciona un país en el mapa</strong>
+            <p>Haz clic en cualquiera de los países participantes destacados en el mapa para continuar.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vista 2: Vista al seleccionar un país con los 3 botones y el gráfico -->
+      <div id="view-country-selected" class="panel-view">
+        <!-- Barra de Controles Superior Rediseñada (Foto 1) -->
+        <div class="country-action-bar">
+          <!-- Clasificación de Fuentes Energéticas (Izquierda) -->
+          <div class="permanent-legend-bar">
+            <span class="legend-bar-title">Clasificación de fuentes energéticas</span>
+            <div class="legend-categories">
+              <div class="legend-group-box legend-box-renew">
+                <span class="legend-dot-indicator" style="background:#10b981;"></span>
+                <span class="legend-group-text">🌱 Renovables (Solar, Eólica, Hidro, Bioenergía)</span>
+              </div>
+              <div class="legend-group-box legend-box-fossil">
+                <span class="legend-dot-indicator" style="background:#ef4444;"></span>
+                <span class="legend-group-text">🔥 Fósiles (Carbón, Gas Natural, Petróleo)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botones de Acción (Derecha / Apilados) -->
+          <div class="control-buttons-stack">
+            <div class="buttons-top-row">
+              <button id="btn-start" class="btn btn-primary btn-start-prominent">
+                <span class="btn-icon">▶</span>
+                <span class="btn-label">Comenzar</span>
+              </button>
+              <button id="btn-back-to-intro" class="btn btn-tertiary">
+                <span class="btn-icon">←</span>
+                <span class="btn-label">Volver a la breve explicación</span>
+              </button>
+            </div>
+            <div class="buttons-bottom-row">
+              <button id="btn-select-options" class="btn btn-secondary">
+                <span class="btn-icon">⚙️</span>
+                <span class="btn-label">Seleccionar opciones</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Menú desplegable de opciones de fuentes Rediseñado en 2 Columnas (Foto 2) -->
+        <div id="options-panel" class="options-panel" style="display: none;">
+          <!-- Opción unificada: Renovables vs Fósiles -->
+          <div class="options-section">
+            <span class="options-title">VISUALIZACIÓN MACRO:</span>
+            <label class="custom-checkbox-macro">
+              <input type="checkbox" id="check-macro-unified" checked>
+              <span class="macro-box"></span>
+              <span class="macro-label-unified">
+                <span class="tag-renovables">🌱 Renovables</span>
+                <span class="vs-badge">vs</span>
+                <span class="tag-fosiles">🔥 Fósiles</span>
+              </span>
+            </label>
+          </div>
+
+          <!-- Desglose en 2 columnas: Renovables a la izquierda, Fósiles a la derecha -->
+          <div class="options-section">
+            <span class="options-title">DESGLOSE DE FUENTES ESPECÍFICAS:</span>
+            <div class="sources-columns-container">
+              <!-- Columna Izquierda: Renovables -->
+              <div class="source-column source-column-ren">
+                <div class="column-badge-header">
+                  <span class="tag-renovables">🌱 Renovables</span>
+                </div>
+                <div class="source-column-list">
+                  <label class="source-item">
+                    <input type="checkbox" class="source-checkbox" data-source="Solar">
+                    <span class="source-dot" style="background-color: #f59e0b;"></span>
+                    <span class="source-name">Solar</span>
+                    <span class="source-group-tag tag-sub-ren">Ren.</span>
+                  </label>
+                  <label class="source-item">
+                    <input type="checkbox" class="source-checkbox" data-source="Hydro">
+                    <span class="source-dot" style="background-color: #3b82f6;"></span>
+                    <span class="source-name">Hidroeléctrica</span>
+                    <span class="source-group-tag tag-sub-ren">Ren.</span>
+                  </label>
+                  <label class="source-item">
+                    <input type="checkbox" class="source-checkbox" data-source="Other renewables">
+                    <span class="source-dot" style="background-color: #10b981;"></span>
+                    <span class="source-name">Otras Renovables</span>
+                    <span class="source-group-tag tag-sub-ren">Ren.</span>
+                  </label>
+                  <label class="source-item">
+                    <input type="checkbox" class="source-checkbox" data-source="Wind">
+                    <span class="source-dot" style="background-color: #06b6d4;"></span>
+                    <span class="source-name">Eólica</span>
+                    <span class="source-group-tag tag-sub-ren">Ren.</span>
+                  </label>
+                  <label class="source-item">
+                    <input type="checkbox" class="source-checkbox" data-source="Bioenergy">
+                    <span class="source-dot" style="background-color: #84cc16;"></span>
+                    <span class="source-name">Bioenergía</span>
+                    <span class="source-group-tag tag-sub-ren">Ren.</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Columna Derecha: Fósiles -->
+              <div class="source-column source-column-fos">
+                <div class="column-badge-header">
+                  <span class="tag-fosiles">🔥 Fósiles</span>
+                </div>
+                <div class="source-column-list">
+                  <label class="source-item">
+                    <input type="checkbox" class="source-checkbox" data-source="Gas">
+                    <span class="source-dot" style="background-color: #f97316;"></span>
+                    <span class="source-name">Gas Natural</span>
+                    <span class="source-group-tag tag-sub-fos">Fósil</span>
+                  </label>
+                  <label class="source-item">
+                    <input type="checkbox" class="source-checkbox" data-source="Coal">
+                    <span class="source-dot" style="background-color: #64748b;"></span>
+                    <span class="source-name">Carbón</span>
+                    <span class="source-group-tag tag-sub-fos">Fósil</span>
+                  </label>
+                  <label class="source-item">
+                    <input type="checkbox" class="source-checkbox" data-source="Other fossil">
+                    <span class="source-dot" style="background-color: #e11d48;"></span>
+                    <span class="source-name">Otros Fósiles</span>
+                    <span class="source-group-tag tag-sub-fos">Fósil</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Métrica del eje temporal -->
+          <div class="options-section">
+            <span class="options-title">MÉTRICA DEL EJE TEMPORAL:</span>
+            <div class="metric-radios">
+              <label><input type="radio" name="metric-type" value="gen" checked> <strong>Generación Eléctrica Anual</strong> (en Teravatios-hora — TWh)</label>
+              <label><input type="radio" name="metric-type" value="share"> <strong>Participación en la Matriz</strong> (% del total nacional)</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contenedor del Gráfico Temporal que se revela fluidamente al presionar 'Comenzar' -->
+        <div id="chart-card" class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title-group">
+              <h3 id="chart-title">Evolución Anual de Fuentes de Energía</h3>
+            </div>
+            <span id="chart-year-badge" class="chart-year-badge">Año 2000</span>
+          </div>
+
+          <!-- Estado previo a dar clic en comenzar -->
+          <div id="chart-placeholder" class="chart-placeholder">
+            <div class="placeholder-icon">📊</div>
+            <p>Fuentes <strong>Fósil</strong> y <strong>Renovable</strong> seleccionadas por defecto.</p>
+            <small>Presiona <strong>«Comenzar»</strong> para reproducir la carrera temporal año a año.</small>
+          </div>
+
+          <!-- Lienzo SVG del gráfico animado horizontalmente -->
+          <div id="chart-container" class="chart-container" style="display: none;"></div>
+          
+          <!-- Controles de playback post-comienzo -->
+          <div id="chart-playback-bar" class="chart-playback-bar" style="display: none;">
+            <div class="progress-track">
+              <div id="playback-progress" class="progress-fill"></div>
+            </div>
+            <div class="playback-info">
+              <span id="playback-status">Reproduciendo transición...</span>
+              <div class="sonification-controls">
+                <span id="sound-indicator" class="sound-indicator" title="Sonificación acústica">🔊 Sonido Activo</span>
+                <button id="btn-replay" class="btn-replay-small" title="Repetir animación">↻ Reiniciar</button>
+              </div>
+            </div>
+            <!-- Breve Explicación de la Sonificación (1 solo canal de datos: Tono) -->
+            <div class="sonification-explanation-card">
+              <div class="sonif-explain-header">
+                <span class="sonif-icon">🎵</span>
+                <strong>Sonificación:</strong>
+                <span class="sonif-simple-text"><strong>Grave</strong> = más uso de fósiles • <strong>Agudo</strong> = energías limpias.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Estado de prueba / feedback simple cuando se pulse alguna opción -->
+        <div id="action-feedback" class="action-feedback" style="display: none;"></div>
+      </div>
+    </aside>
+  </div>
+
+  <script src="flags_data.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
