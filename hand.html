@@ -10,32 +10,32 @@
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       margin: 0;
-      padding: 16px;
+      padding: 14px;
       background: #0f172a;
       color: #f8fafc;
       text-align: center;
     }
     h1 {
-      font-size: 1.4rem;
-      margin: 8px 0;
+      font-size: 1.3rem;
+      margin: 6px 0;
       color: #38bdf8;
     }
     p {
       color: #94a3b8;
-      font-size: 0.95rem;
-      margin: 4px 0 16px;
+      font-size: 0.9rem;
+      margin: 2px 0 12px;
     }
     .status-card {
       background: #1e293b;
       border: 1px solid #334155;
       border-radius: 12px;
-      padding: 12px 16px;
-      margin: 10px auto;
+      padding: 10px 14px;
+      margin: 8px auto;
       max-width: 500px;
       display: flex;
       justify-content: space-around;
       align-items: center;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
     }
     .status-badge {
       padding: 4px 10px;
@@ -44,36 +44,54 @@
       background: #065f46;
       color: #34d399;
     }
+    .controls-row {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin: 8px auto;
+      flex-wrap: wrap;
+      max-width: 500px;
+    }
+    .btn-toggle {
+      background: #0284c7;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+    .btn-toggle:hover {
+      background: #0369a1;
+    }
+    .btn-camera {
+      background: #10b981;
+    }
+    .btn-camera:hover {
+      background: #059669;
+    }
     .instructions {
       max-width: 500px;
-      margin: 12px auto;
+      margin: 10px auto;
       background: #1e293b;
       border-left: 4px solid #38bdf8;
       padding: 10px 14px;
       border-radius: 6px;
       text-align: left;
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       line-height: 1.4;
       color: #cbd5e1;
     }
-    .btn-toggle {
-      background: #3b82f6;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      margin: 6px;
-    }
-    .btn-toggle:hover {
-      background: #2563eb;
-    }
     #preview-container {
-      margin: 16px auto;
+      margin: 12px auto;
       width: 100%;
       max-width: 640px;
-      height: 400px;
+      height: 380px;
       position: relative;
       background: #000;
       border-radius: 12px;
@@ -92,46 +110,108 @@
     <span>Dedo: <strong id="finger-coords">Esperando mano</strong></span>
   </div>
 
-  <div class="instructions">
-    📌 <strong>Instrucciones:</strong>
-    Coloca tu teléfono o webcam apuntando hacia el <strong>mapa físico de las Américas</strong> (en la mesa o pared). Al apuntar con tu <strong>dedo índice</strong> a un país, el computador lo seleccionará automáticamente y comenzará la visualización y sonificación.
+  <div class="controls-row">
+    <button class="btn-toggle btn-camera" onclick="switchCamera()">
+      🔄 Cambiar a Cámara Trasera / Frontal
+    </button>
+    <button class="btn-toggle" onclick="toggleFlip()">
+      ⇄ Modo Espejo
+    </button>
   </div>
 
-  <div>
-    <button class="btn-toggle" onclick="toggleFlip()">⇄ Invertir Cámara (Espejo)</button>
+  <div class="instructions">
+    📌 <strong>Modo Cámara Trasera Activado:</strong><br>
+    Sujeta el celular apuntando hacia el <strong>mapa físico de las Américas</strong> en la mesa. Al posar tu dedo índice sobre un país por 0.3 segundos, el computador lo detectará y rotará automáticamente.
   </div>
 
   <div id="preview-container"></div>
 
   <script>
     let isFlipped = false;
+    let currentCameraIndex = 0;
+    let availableCameras = [];
     const statusText = document.getElementById("status-text");
     const fingerCoords = document.getElementById("finger-coords");
 
-    // Iniciar sensor de mano de Protobject (MediaPipe en local)
-    try {
-      Protobject.HandSensor.start(100, 0);
+    async function initCamerasAndSensor() {
+      try {
+        // Consultar cámaras disponibles en el dispositivo
+        if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          availableCameras = devices.filter(d => d.kind === "videoinput");
 
-      // Ubicar la vista previa de la cámara dentro del contenedor
-      const container = document.getElementById("preview-container");
-      const rect = container.getBoundingClientRect();
+          // En smartphones, la cámara trasera suele tener 'back', 'rear', 'trasera' o ser la cámara con índice 1
+          const rearIndex = availableCameras.findIndex(c => {
+            const label = (c.label || "").toLowerCase();
+            return label.includes("back") || label.includes("rear") || label.includes("trasera") || label.includes("environment");
+          });
 
-      Protobject.HandSensor.showPreview({
-        top: rect.top + window.scrollY,
-        left: rect.left + window.scrollX,
-        width: Math.min(640, window.innerWidth - 32),
-        height: 380,
-      });
+          if (rearIndex !== -1) {
+            currentCameraIndex = rearIndex;
+          } else if (availableCameras.length > 1) {
+            // Si no tiene etiquetas visibles aún, la segunda cámara suele ser la trasera
+            currentCameraIndex = 1;
+          } else {
+            currentCameraIndex = 0;
+          }
+        }
+      } catch (err) {
+        console.warn("No se pudo enumerar cámaras:", err);
+      }
 
-      Protobject.HandSensor.flip(isFlipped);
-      statusText.textContent = "● Cámara Activa";
-      statusText.style.background = "#065f46";
-      statusText.style.color = "#34d399";
-    } catch (e) {
-      console.error("Error al iniciar HandSensor:", e);
-      statusText.textContent = "Error de cámara";
-      statusText.style.background = "#7f1d1d";
-      statusText.style.color = "#f87171";
+      // Iniciar sensor de mano de Protobject con la cámara seleccionada
+      try {
+        Protobject.HandSensor.start(100, currentCameraIndex);
+
+        // Ubicar la vista previa de la cámara dentro del contenedor
+        const container = document.getElementById("preview-container");
+        const rect = container.getBoundingClientRect();
+
+        Protobject.HandSensor.showPreview({
+          top: rect.top + window.scrollY,
+          left: rect.left + window.scrollX,
+          width: Math.min(640, window.innerWidth - 28),
+          height: 380,
+        });
+
+        // En cámara trasera NO se usa espejo para que coincida con la vista real
+        Protobject.HandSensor.flip(isFlipped);
+
+        statusText.textContent = "● Cámara Activa (" + (currentCameraIndex === 1 ? "Trasera" : "Cámara " + currentCameraIndex) + ")";
+        statusText.style.background = "#065f46";
+        statusText.style.color = "#34d399";
+      } catch (e) {
+        console.error("Error al iniciar HandSensor:", e);
+        statusText.textContent = "Error de cámara";
+        statusText.style.background = "#7f1d1d";
+        statusText.style.color = "#f87171";
+      }
+    }
+
+    // Cambiar dinámicamente entre cámara frontal y trasera
+    async function switchCamera() {
+      try {
+        if (availableCameras.length === 0 && navigator.mediaDevices) {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          availableCameras = devices.filter(d => d.kind === "videoinput");
+        }
+
+        if (availableCameras.length > 1) {
+          currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
+        } else {
+          // Alternar entre 0 y 1 si la lista no reporta etiquetas
+          currentCameraIndex = currentCameraIndex === 0 ? 1 : 0;
+        }
+
+        console.log("Cambiando a cámara índice:", currentCameraIndex);
+
+        if (Protobject.HandSensor && Protobject.HandSensor.setupWebcam) {
+          await Protobject.HandSensor.setupWebcam(currentCameraIndex);
+          statusText.textContent = "● Cámara Activa (" + (currentCameraIndex === 1 ? "Trasera" : "Frontal") + ")";
+        }
+      } catch (err) {
+        console.error("Error cambiando de cámara:", err);
+      }
     }
 
     function toggleFlip() {
@@ -139,16 +219,16 @@
       Protobject.HandSensor.flip(isFlipped);
     }
 
-    // El landmark 8 corresponde a la punta del dedo índice
+    // Escuchar detección del dedo índice (Landmark 8)
     Protobject.HandSensor.onData((data) => {
       if (data.landmarks && data.landmarks[0] && data.landmarks[0][8]) {
         const indexFinger = data.landmarks[0][8];
         const x = Number(indexFinger.x.toFixed(3));
         const y = Number(indexFinger.y.toFixed(3));
 
-        fingerCoords.textContent = `X: ${x} | Y: ${y}`;
+        fingerCoords.textContent = "X: " + x + " | Y: " + y;
 
-        // Enviar coordenadas normalizadas (0 a 1) al index.html
+        // Enviar coordenadas al PC
         Protobject.Core.send({
           tipo: "apuntado",
           x: x,
@@ -158,14 +238,16 @@
         }).to("index.html");
 
       } else {
-        fingerCoords.textContent = "Sin mano visible";
+        fingerCoords.textContent = "Buscando dedo";
         Protobject.Core.send({
           tipo: "apuntado",
           activo: false
         }).to("index.html");
       }
     });
+
+    // Iniciar
+    initCamerasAndSensor();
   </script>
 </body>
 </html>
-
