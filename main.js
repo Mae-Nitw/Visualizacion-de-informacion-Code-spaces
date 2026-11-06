@@ -1054,30 +1054,30 @@ window.addEventListener('DOMContentLoaded', async () => {
 // ==========================================
 
 const COORDENADAS_MAPA_FISICO = [
-  // Norteamérica
-  { country: 'Canada', x: 0.42, y: 0.16, r: 0.09 },
-  { country: 'United States', x: 0.42, y: 0.28, r: 0.08 },
-  { country: 'Mexico', x: 0.35, y: 0.40, r: 0.065 },
+  // Norteamérica (calibrado con mapa_referencia.jpg)
+  { country: 'Canada', x: 0.445, y: 0.181, r: 0.120 },
+  { country: 'United States', x: 0.411, y: 0.303, r: 0.090 },
+  { country: 'Mexico', x: 0.365, y: 0.430, r: 0.065 },
 
   // Centroamérica y Caribe
-  { country: 'Cuba', x: 0.58, y: 0.44, r: 0.05 },
-  { country: 'Guatemala', x: 0.32, y: 0.48, r: 0.045 },
-  { country: 'Honduras', x: 0.41, y: 0.49, r: 0.045 },
-  { country: 'Nicaragua', x: 0.38, y: 0.53, r: 0.045 },
-  { country: 'Costa Rica', x: 0.44, y: 0.56, r: 0.045 },
-  { country: 'Panama', x: 0.50, y: 0.58, r: 0.045 },
+  { country: 'Cuba', x: 0.531, y: 0.454, r: 0.045 },
+  { country: 'Guatemala', x: 0.417, y: 0.496, r: 0.038 },
+  { country: 'Honduras', x: 0.451, y: 0.503, r: 0.038 },
+  { country: 'Nicaragua', x: 0.474, y: 0.522, r: 0.038 },
+  { country: 'Costa Rica', x: 0.485, y: 0.547, r: 0.035 },
+  { country: 'Panama', x: 0.519, y: 0.562, r: 0.035 },
 
   // Sudamérica
-  { country: 'Colombia', x: 0.51, y: 0.63, r: 0.06 },
-  { country: 'Venezuela', x: 0.63, y: 0.62, r: 0.06 },
-  { country: 'Ecuador', x: 0.42, y: 0.68, r: 0.05 },
-  { country: 'Peru', x: 0.45, y: 0.74, r: 0.06 },
-  { country: 'Bolivia', x: 0.55, y: 0.77, r: 0.055 },
-  { country: 'Brazil', x: 0.72, y: 0.72, r: 0.10 },
-  { country: 'Paraguay', x: 0.58, y: 0.83, r: 0.05 },
-  { country: 'Chile', x: 0.45, y: 0.88, r: 0.05 },
-  { country: 'Argentina', x: 0.55, y: 0.90, r: 0.06 },
-  { country: 'Uruguay', x: 0.65, y: 0.86, r: 0.045 }
+  { country: 'Colombia', x: 0.576, y: 0.581, r: 0.058 },
+  { country: 'Venezuela', x: 0.651, y: 0.566, r: 0.058 },
+  { country: 'Ecuador', x: 0.531, y: 0.620, r: 0.048 },
+  { country: 'Peru', x: 0.559, y: 0.669, r: 0.062 },
+  { country: 'Bolivia', x: 0.634, y: 0.728, r: 0.058 },
+  { country: 'Brazil', x: 0.742, y: 0.684, r: 0.115 },
+  { country: 'Paraguay', x: 0.668, y: 0.781, r: 0.048 },
+  { country: 'Uruguay', x: 0.685, y: 0.825, r: 0.042 },
+  { country: 'Chile', x: 0.588, y: 0.840, r: 0.048 },
+  { country: 'Argentina', x: 0.639, y: 0.859, r: 0.068 }
 ];
 
 let physicalHoverCountry = null;
