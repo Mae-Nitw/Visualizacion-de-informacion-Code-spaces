@@ -10,35 +10,35 @@
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       margin: 0;
-      padding: 14px;
+      padding: 12px;
       background: #0f172a;
       color: #f8fafc;
       text-align: center;
     }
     h1 {
-      font-size: 1.3rem;
-      margin: 6px 0;
+      font-size: 1.25rem;
+      margin: 4px 0;
       color: #38bdf8;
     }
     p {
       color: #94a3b8;
-      font-size: 0.9rem;
-      margin: 2px 0 12px;
+      font-size: 0.85rem;
+      margin: 2px 0 10px;
     }
     .status-card {
       background: #1e293b;
       border: 1px solid #334155;
       border-radius: 12px;
-      padding: 10px 14px;
-      margin: 8px auto;
-      max-width: 500px;
+      padding: 8px 12px;
+      margin: 6px auto;
+      max-width: 520px;
       display: flex;
       justify-content: space-around;
       align-items: center;
-      font-size: 0.85rem;
+      font-size: 0.82rem;
     }
     .status-badge {
-      padding: 4px 10px;
+      padding: 3px 8px;
       border-radius: 9999px;
       font-weight: 600;
       background: #065f46;
@@ -47,56 +47,130 @@
     .controls-row {
       display: flex;
       justify-content: center;
-      gap: 8px;
-      margin: 8px auto;
+      gap: 6px;
+      margin: 6px auto;
       flex-wrap: wrap;
-      max-width: 500px;
+      max-width: 520px;
     }
     .btn-toggle {
       background: #0284c7;
       color: white;
       border: none;
-      padding: 10px 16px;
+      padding: 8px 14px;
       border-radius: 8px;
       font-weight: 600;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.3);
     }
-    .btn-toggle:hover {
-      background: #0369a1;
-    }
-    .btn-camera {
-      background: #10b981;
-    }
-    .btn-camera:hover {
-      background: #059669;
-    }
-    .instructions {
-      max-width: 500px;
-      margin: 10px auto;
+    .btn-toggle:hover { background: #0369a1; }
+    .btn-camera { background: #10b981; }
+    .btn-camera:hover { background: #059669; }
+
+    /* Barra de calibración de distancia / escala */
+    .scale-card {
       background: #1e293b;
-      border-left: 4px solid #38bdf8;
+      border: 1px solid #38bdf8;
+      border-radius: 10px;
       padding: 10px 14px;
-      border-radius: 6px;
-      text-align: left;
-      font-size: 0.82rem;
-      line-height: 1.4;
-      color: #cbd5e1;
+      margin: 8px auto;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: 0 2px 10px rgba(56, 189, 248, 0.15);
     }
+    .scale-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.82rem;
+      color: #e2e8f0;
+    }
+    .scale-badge {
+      background: #0284c7;
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.78rem;
+    }
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn-step {
+      background: #334155;
+      color: #f8fafc;
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .btn-step:hover { background: #475569; }
+    .scale-slider {
+      flex: 1;
+      height: 6px;
+      accent-color: #38bdf8;
+      cursor: pointer;
+    }
+
     #preview-container {
-      margin: 12px auto;
+      margin: 10px auto;
       width: 100%;
       max-width: 640px;
-      height: 380px;
+      height: 420px;
       position: relative;
       background: #000;
       border-radius: 12px;
       overflow: hidden;
-      border: 2px dashed #475569;
+      border: 2px solid #334155;
+    }
+
+    /* Caja de encuadre en el centro */
+    .framing-box {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 65%;
+      height: 65%;
+      border: 2px dashed #38bdf8;
+      border-radius: 10px;
+      pointer-events: none;
+      z-index: 25;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      /* Oscurecer el área exterior para enfocar la hoja */
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.42);
+      transition: width 0.1s ease, height 0.1s ease;
+    }
+    .framing-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      opacity: 0.45;
+      pointer-events: none;
+    }
+    .framing-tag {
+      position: absolute;
+      bottom: -22px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid #38bdf8;
+      color: #38bdf8;
+      font-size: 0.72rem;
+      font-weight: bold;
+      padding: 1px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
     }
   </style>
 </head>
@@ -112,47 +186,79 @@
 
   <div class="controls-row">
     <button class="btn-toggle btn-camera" onclick="switchCamera()">
-      🔄 Cambiar a Cámara Trasera / Frontal
+      🔄 Cámara Trasera / Frontal
     </button>
     <button class="btn-toggle" onclick="toggleOverlay()">
-      📐 Guía de Alineación
+      📐 Ver / Ocultar Guía
     </button>
     <button class="btn-toggle" onclick="toggleFlip()">
-      ⇄ Modo Espejo
+      ⇄ Espejo
     </button>
   </div>
 
-  <div class="instructions">
-    📌 <strong>Modo Cámara Trasera Activado:</strong><br>
-    Sujeta el celular apuntando hacia el <strong>mapa físico de las Américas</strong> en la mesa. Al posar tu dedo índice sobre un país por 0.3 segundos, el computador lo detectará y rotará automáticamente.
+  <!-- Control de tamaño del marco para alejar el celular cómodamente -->
+  <div class="scale-card">
+    <div class="scale-header">
+      <span>📏 <strong>Tamaño de Encuadre (Distancia Celular):</strong></span>
+      <span id="scale-badge" class="scale-badge">65% (Distancia Cómoda ~35cm)</span>
+    </div>
+    <div class="slider-row">
+      <button class="btn-step" onclick="stepScale(-5)">−</button>
+      <input type="range" id="scale-slider" class="scale-slider" min="40" max="95" value="65" oninput="setScale(this.value)">
+      <button class="btn-step" onclick="stepScale(5)">+</button>
+    </div>
   </div>
 
   <div id="preview-container">
-    <img id="map-guide-overlay" src="mapa_referencia.jpg" alt="Guía" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0.38; pointer-events: none; display: none; z-index: 25;" />
+    <!-- Marco de encuadre centrado y escalable -->
+    <div id="framing-box" class="framing-box">
+      <img id="map-guide-overlay" src="mapa_referencia.jpg" alt="Guía" class="framing-img" />
+      <span class="framing-tag">Encuadra la hoja física aquí</span>
+    </div>
   </div>
 
   <script>
     let isFlipped = false;
-    let overlayVisible = false;
+    let overlayVisible = true;
+    let guideScale = 0.65; // 65% por defecto para permitir sostener el celular alejado
     let currentCameraIndex = 0;
     let availableCameras = [];
     const statusText = document.getElementById("status-text");
     const fingerCoords = document.getElementById("finger-coords");
+    const scaleBadge = document.getElementById("scale-badge");
+    const framingBox = document.getElementById("framing-box");
+    const scaleSlider = document.getElementById("scale-slider");
+
+    function setScale(val) {
+      guideScale = Number(val) / 100;
+      const pct = val + "%";
+      const tag = val <= 55 ? " (Celular Lejos)" : val <= 75 ? " (Distancia Cómoda)" : " (Celular Cerca)";
+      scaleBadge.textContent = pct + tag;
+      if (framingBox) {
+        framingBox.style.width = pct;
+        framingBox.style.height = pct;
+      }
+    }
+
+    function stepScale(delta) {
+      const newVal = Math.max(40, Math.min(95, Number(scaleSlider.value) + delta));
+      scaleSlider.value = newVal;
+      setScale(newVal);
+    }
 
     function toggleOverlay() {
       overlayVisible = !overlayVisible;
-      const overlay = document.getElementById("map-guide-overlay");
-      if (overlay) overlay.style.display = overlayVisible ? "block" : "none";
+      if (framingBox) {
+        framingBox.style.display = overlayVisible ? "flex" : "none";
+      }
     }
 
     async function initCamerasAndSensor() {
       try {
-        // Consultar cámaras disponibles en el dispositivo
         if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
           const devices = await navigator.mediaDevices.enumerateDevices();
           availableCameras = devices.filter(d => d.kind === "videoinput");
 
-          // En smartphones, la cámara trasera suele tener 'back', 'rear', 'trasera' o ser la cámara con índice 1
           const rearIndex = availableCameras.findIndex(c => {
             const label = (c.label || "").toLowerCase();
             return label.includes("back") || label.includes("rear") || label.includes("trasera") || label.includes("environment");
@@ -161,7 +267,6 @@
           if (rearIndex !== -1) {
             currentCameraIndex = rearIndex;
           } else if (availableCameras.length > 1) {
-            // Si no tiene etiquetas visibles aún, la segunda cámara suele ser la trasera
             currentCameraIndex = 1;
           } else {
             currentCameraIndex = 0;
@@ -171,22 +276,19 @@
         console.warn("No se pudo enumerar cámaras:", err);
       }
 
-      // Iniciar sensor de mano de Protobject con la cámara seleccionada
       try {
         Protobject.HandSensor.start(100, currentCameraIndex);
 
-        // Ubicar la vista previa de la cámara dentro del contenedor
         const container = document.getElementById("preview-container");
         const rect = container.getBoundingClientRect();
 
         Protobject.HandSensor.showPreview({
           top: rect.top + window.scrollY,
           left: rect.left + window.scrollX,
-          width: Math.min(640, window.innerWidth - 28),
-          height: 380,
+          width: Math.min(640, window.innerWidth - 24),
+          height: 420,
         });
 
-        // En cámara trasera NO se usa espejo para que coincida con la vista real
         Protobject.HandSensor.flip(isFlipped);
 
         statusText.textContent = "● Cámara Activa (" + (currentCameraIndex === 1 ? "Trasera" : "Cámara " + currentCameraIndex) + ")";
@@ -200,7 +302,6 @@
       }
     }
 
-    // Cambiar dinámicamente entre cámara frontal y trasera
     async function switchCamera() {
       try {
         if (availableCameras.length === 0 && navigator.mediaDevices) {
@@ -211,11 +312,8 @@
         if (availableCameras.length > 1) {
           currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
         } else {
-          // Alternar entre 0 y 1 si la lista no reporta etiquetas
           currentCameraIndex = currentCameraIndex === 0 ? 1 : 0;
         }
-
-        console.log("Cambiando a cámara índice:", currentCameraIndex);
 
         if (Protobject.HandSensor && Protobject.HandSensor.setupWebcam) {
           await Protobject.HandSensor.setupWebcam(currentCameraIndex);
@@ -231,21 +329,32 @@
       Protobject.HandSensor.flip(isFlipped);
     }
 
-    // Escuchar detección del dedo índice (Landmark 8)
+    // Escuchar detección del dedo índice (Landmark 8) y mapear según la escala
     Protobject.HandSensor.onData((data) => {
       if (data.landmarks && data.landmarks[0] && data.landmarks[0][8]) {
         const indexFinger = data.landmarks[0][8];
-        const x = Number(indexFinger.x.toFixed(3));
-        const y = Number(indexFinger.y.toFixed(3));
+        const rawX = Number(indexFinger.x);
+        const rawY = Number(indexFinger.y);
 
-        fingerCoords.textContent = "X: " + x + " | Y: " + y;
+        // Remapeo de coordenadas según el marco de escala centrada
+        const minX = (1 - guideScale) / 2;
+        const minY = (1 - guideScale) / 2;
+        const normX = (rawX - minX) / guideScale;
+        const normY = (rawY - minY) / guideScale;
 
-        // Enviar coordenadas al PC
+        const x = Number(normX.toFixed(3));
+        const y = Number(normY.toFixed(3));
+
+        const dentroDelMarco = (x >= -0.05 && x <= 1.05 && y >= -0.05 && y <= 1.05);
+
+        fingerCoords.textContent = dentroDelMarco ? ("X: " + x + " | Y: " + y) : "Fuera de marco";
+
+        // Enviar coordenadas relativas al mapa físico al PC
         Protobject.Core.send({
           tipo: "apuntado",
           x: x,
           y: y,
-          activo: true,
+          activo: dentroDelMarco,
           timestamp: Date.now()
         }).to("index.html");
 
@@ -258,7 +367,6 @@
       }
     });
 
-    // Iniciar
     initCamerasAndSensor();
   </script>
 </body>
