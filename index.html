@@ -68,6 +68,67 @@
         </div>
       </header>
 
+      <!-- MÓDULO FÍSICO: DUAL TURBINAS EÓLICAS (ARDUINO 1 & 2) -->
+      <section class="dual-turbines-panel">
+        <div class="dual-turbines-head">
+          <div class="dual-turbines-title">
+            <span class="turbine-spinning-icon">💨</span>
+            <strong>Turbinas Eólicas Físicas (Rotores Arduino)</strong>
+          </div>
+          <span class="turbines-subtag">Comparador tangible con peones de ajedrez</span>
+        </div>
+
+        <div class="turbines-grid">
+          <!-- Turbina 1: Peón Blanco -->
+          <div class="turbine-card turbine-white-card" id="card-turbine-1">
+            <div class="turbine-card-header">
+              <span class="pawn-tag tag-white">⚪ Peón Blanco</span>
+              <button id="btn-conn-arduino-1" class="btn-usb-connect" title="Conectar USB de Arduino 1">
+                🔌 Conectar Arduino 1
+              </button>
+            </div>
+            <div class="turbine-country-display" id="t1-country-name">
+              Coloca el peón blanco en el mapa...
+            </div>
+            <div class="turbine-gauge-row">
+              <span class="rotor-symbol" id="t1-rotor-symbol">⚙️</span>
+              <div class="rotor-meter-bar">
+                <div class="rotor-fill fill-white" id="t1-fill" style="width: 0%;"></div>
+              </div>
+              <span class="rotor-val" id="t1-pct-label">0%</span>
+            </div>
+            <div class="turbine-details-row">
+              <span>Eólica: <strong id="t1-gen-val">0 TWh</strong></span>
+              <span>Matriz: <strong id="t1-share-val">0%</strong></span>
+            </div>
+          </div>
+
+          <!-- Turbina 2: Peón Negro -->
+          <div class="turbine-card turbine-black-card" id="card-turbine-2">
+            <div class="turbine-card-header">
+              <span class="pawn-tag tag-black">⚫ Peón Negro</span>
+              <button id="btn-conn-arduino-2" class="btn-usb-connect" title="Conectar USB de Arduino 2">
+                🔌 Conectar Arduino 2
+              </button>
+            </div>
+            <div class="turbine-country-display" id="t2-country-name">
+              Coloca el peón negro en el mapa...
+            </div>
+            <div class="turbine-gauge-row">
+              <span class="rotor-symbol" id="t2-rotor-symbol">⚙️</span>
+              <div class="rotor-meter-bar">
+                <div class="rotor-fill fill-cyan" id="t2-fill" style="width: 0%;"></div>
+              </div>
+              <span class="rotor-val" id="t2-pct-label">0%</span>
+            </div>
+            <div class="turbine-details-row">
+              <span>Eólica: <strong id="t2-gen-val">0 TWh</strong></span>
+              <span>Matriz: <strong id="t2-share-val">0%</strong></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Vista 1: Breve Explicación e Indicación Inicial (Plano Base) -->
       <div id="view-intro" class="panel-view active">
         <div class="concept-card">

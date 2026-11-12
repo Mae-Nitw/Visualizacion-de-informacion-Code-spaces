@@ -3,68 +3,87 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sensor de Mano — Protobject (IIC2026 Grupo 27)</title>
+  <title>Sensor ArUco de Peones — Turbinas Eólicas (IIC2026 Grupo 27)</title>
   <script src="https://app.protobject.com/framework/p.js"></script>
   <script src="config.js"></script>
+  <!-- Motor de visión por computador ArUco local (sin dependencias externas) -->
+  <script src="cv.js"></script>
+  <script src="aruco.js"></script>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       margin: 0;
-      padding: 12px;
+      padding: 10px;
       background: #0f172a;
       color: #f8fafc;
       text-align: center;
     }
     h1 {
-      font-size: 1.25rem;
+      font-size: 1.2rem;
       margin: 4px 0;
       color: #38bdf8;
     }
     p {
       color: #94a3b8;
-      font-size: 0.85rem;
-      margin: 2px 0 10px;
+      font-size: 0.82rem;
+      margin: 2px 0 8px;
     }
-    .status-card {
+    
+    /* Panel de estado de los dos peones */
+    .pawns-hud {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      max-width: 540px;
+      margin: 6px auto;
+    }
+    .pawn-hud-card {
       background: #1e293b;
       border: 1px solid #334155;
-      border-radius: 12px;
-      padding: 8px 12px;
-      margin: 6px auto;
-      max-width: 520px;
+      border-radius: 10px;
+      padding: 8px;
       display: flex;
-      justify-content: space-around;
+      flex-direction: column;
+      gap: 3px;
+      font-size: 0.8rem;
+    }
+    .pawn-hud-white { border-left: 4px solid #f8fafc; }
+    .pawn-hud-black { border-left: 4px solid #38bdf8; }
+    .pawn-title {
+      font-weight: 700;
+      display: flex;
       align-items: center;
-      font-size: 0.82rem;
+      justify-content: space-between;
     }
-    .status-badge {
-      padding: 3px 8px;
-      border-radius: 9999px;
-      font-weight: 600;
-      background: #065f46;
-      color: #34d399;
+    .pawn-status {
+      font-weight: 700;
+      font-size: 0.85rem;
+      padding: 2px 6px;
+      border-radius: 4px;
     }
+    .status-active { background: #065f46; color: #34d399; }
+    .status-idle { background: #334155; color: #94a3b8; }
+
     .controls-row {
       display: flex;
       justify-content: center;
       gap: 6px;
       margin: 6px auto;
       flex-wrap: wrap;
-      max-width: 520px;
+      max-width: 540px;
     }
     .btn-toggle {
       background: #0284c7;
       color: white;
       border: none;
-      padding: 8px 14px;
-      border-radius: 8px;
+      padding: 8px 12px;
+      border-radius: 6px;
       font-weight: 600;
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 5px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
     }
     .btn-toggle:hover { background: #0369a1; }
     .btn-camera { background: #10b981; }
@@ -74,56 +93,54 @@
     .scale-card {
       background: #1e293b;
       border: 1px solid #38bdf8;
-      border-radius: 10px;
-      padding: 10px 14px;
-      margin: 8px auto;
-      max-width: 520px;
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin: 6px auto;
+      max-width: 540px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      box-shadow: 0 2px 10px rgba(56, 189, 248, 0.15);
+      gap: 4px;
     }
     .scale-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.82rem;
+      font-size: 0.78rem;
       color: #e2e8f0;
     }
     .scale-badge {
       background: #0284c7;
       color: #fff;
-      padding: 2px 8px;
-      border-radius: 6px;
+      padding: 1px 6px;
+      border-radius: 4px;
       font-weight: 700;
-      font-size: 0.78rem;
+      font-size: 0.75rem;
     }
     .slider-row {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
     .btn-step {
       background: #334155;
       color: #f8fafc;
       border: none;
-      width: 32px;
-      height: 32px;
-      border-radius: 6px;
-      font-size: 1.1rem;
+      width: 28px;
+      height: 28px;
+      border-radius: 4px;
+      font-size: 1rem;
       font-weight: bold;
       cursor: pointer;
     }
-    .btn-step:hover { background: #475569; }
     .scale-slider {
       flex: 1;
-      height: 6px;
+      height: 5px;
       accent-color: #38bdf8;
       cursor: pointer;
     }
 
     #preview-container {
-      margin: 10px auto;
+      margin: 8px auto;
       width: 100%;
       max-width: 640px;
       height: 420px;
@@ -132,6 +149,20 @@
       border-radius: 12px;
       overflow: hidden;
       border: 2px solid #334155;
+    }
+    #video-feed {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    #overlay-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
     }
 
     /* Caja de encuadre en el centro */
@@ -145,11 +176,10 @@
       border: 2px dashed #38bdf8;
       border-radius: 10px;
       pointer-events: none;
-      z-index: 25;
+      z-index: 20;
       display: flex;
       align-items: center;
       justify-content: center;
-      /* Oscurecer el área exterior para enfocar la hoja */
       box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.42);
       transition: width 0.1s ease, height 0.1s ease;
     }
@@ -157,7 +187,7 @@
       width: 100%;
       height: 100%;
       object-fit: contain;
-      opacity: 0.45;
+      opacity: 0.4;
       pointer-events: none;
     }
     .framing-tag {
@@ -176,12 +206,25 @@
 </head>
 <body>
 
-  <h1>🖐️ Sensor Físico de Apuntado</h1>
+  <h1>♟️ Sensor de Peones (Turbinas Eólicas)</h1>
   <p>Transición Energética en las Américas · IIC2026 Grupo 27</p>
 
-  <div class="status-card">
-    <span>Estado: <span id="status-text" class="status-badge">Iniciando cámara...</span></span>
-    <span>Dedo: <strong id="finger-coords">Esperando mano</strong></span>
+  <!-- HUD en vivo de los dos peones -->
+  <div class="pawns-hud">
+    <div class="pawn-hud-card pawn-hud-white">
+      <div class="pawn-title">
+        <span>⚪ Peón Blanco (Turbina 1)</span>
+        <span class="pawn-status status-idle" id="pawn1-badge">Levantado</span>
+      </div>
+      <div style="font-size:0.75rem; color:#94a3b8;">País: <strong id="pawn1-country" style="color:#f8fafc;">Ninguno</strong></div>
+    </div>
+    <div class="pawn-hud-card pawn-hud-black">
+      <div class="pawn-title">
+        <span>⚫ Peón Negro (Turbina 2)</span>
+        <span class="pawn-status status-idle" id="pawn2-badge">Levantado</span>
+      </div>
+      <div style="font-size:0.75rem; color:#94a3b8;">País: <strong id="pawn2-country" style="color:#38bdf8;">Ninguno</strong></div>
+    </div>
   </div>
 
   <div class="controls-row">
@@ -191,12 +234,9 @@
     <button class="btn-toggle" onclick="toggleOverlay()">
       📐 Ver / Ocultar Guía
     </button>
-    <button class="btn-toggle" onclick="toggleFlip()">
-      ⇄ Espejo
-    </button>
   </div>
 
-  <!-- Control de tamaño del marco para alejar el celular cómodamente -->
+  <!-- Control de tamaño del marco -->
   <div class="scale-card">
     <div class="scale-header">
       <span>📏 <strong>Tamaño de Encuadre (Distancia Celular):</strong></span>
@@ -210,30 +250,85 @@
   </div>
 
   <div id="preview-container">
+    <video id="video-feed" playsinline autoplay muted></video>
+    <canvas id="overlay-canvas"></canvas>
+
     <!-- Marco de encuadre centrado y escalable -->
     <div id="framing-box" class="framing-box">
       <img id="map-guide-overlay" src="mapa_referencia.jpg" alt="Guía" class="framing-img" />
-      <span class="framing-tag">Encuadra la hoja física aquí</span>
+      <span class="framing-tag">Encuadra la hoja del mapa aquí</span>
     </div>
   </div>
 
   <script>
-    let isFlipped = false;
+    // 19 Países calibrados para el mapa
+    const COORDENADAS_MAPA_FISICO = [
+      { country: 'Canada', x: 0.445, y: 0.181, r: 0.120 },
+      { country: 'United States', x: 0.411, y: 0.303, r: 0.090 },
+      { country: 'Mexico', x: 0.365, y: 0.430, r: 0.065 },
+      { country: 'Cuba', x: 0.531, y: 0.454, r: 0.045 },
+      { country: 'Guatemala', x: 0.417, y: 0.496, r: 0.038 },
+      { country: 'Honduras', x: 0.451, y: 0.503, r: 0.038 },
+      { country: 'Nicaragua', x: 0.474, y: 0.522, r: 0.038 },
+      { country: 'Costa Rica', x: 0.485, y: 0.547, r: 0.035 },
+      { country: 'Panama', x: 0.519, y: 0.562, r: 0.035 },
+      { country: 'Colombia', x: 0.576, y: 0.581, r: 0.058 },
+      { country: 'Venezuela', x: 0.651, y: 0.566, r: 0.058 },
+      { country: 'Ecuador', x: 0.531, y: 0.620, r: 0.048 },
+      { country: 'Peru', x: 0.559, y: 0.669, r: 0.062 },
+      { country: 'Bolivia', x: 0.634, y: 0.728, r: 0.058 },
+      { country: 'Brazil', x: 0.742, y: 0.684, r: 0.115 },
+      { country: 'Paraguay', x: 0.668, y: 0.781, r: 0.048 },
+      { country: 'Uruguay', x: 0.685, y: 0.825, r: 0.042 },
+      { country: 'Chile', x: 0.588, y: 0.840, r: 0.048 },
+      { country: 'Argentina', x: 0.639, y: 0.859, r: 0.068 }
+    ];
+
+    const NOMBRES_ESP = {
+      'Canada': 'Canadá',
+      'United States': 'Estados Unidos',
+      'Mexico': 'México',
+      'Cuba': 'Cuba',
+      'Guatemala': 'Guatemala',
+      'Honduras': 'Honduras',
+      'Nicaragua': 'Nicaragua',
+      'Costa Rica': 'Costa Rica',
+      'Panama': 'Panamá',
+      'Colombia': 'Colombia',
+      'Venezuela': 'Venezuela',
+      'Ecuador': 'Ecuador',
+      'Peru': 'Perú',
+      'Bolivia': 'Bolivia',
+      'Brazil': 'Brasil',
+      'Paraguay': 'Paraguay',
+      'Uruguay': 'Uruguay',
+      'Chile': 'Chile',
+      'Argentina': 'Argentina'
+    };
+
+    let guideScale = 0.65;
     let overlayVisible = true;
-    let guideScale = 0.65; // 65% por defecto para permitir sostener el celular alejado
     let currentCameraIndex = 0;
     let availableCameras = [];
-    const statusText = document.getElementById("status-text");
-    const fingerCoords = document.getElementById("finger-coords");
-    const scaleBadge = document.getElementById("scale-badge");
+    let currentStream = null;
+    let detector = new AR.Detector();
+
+    const video = document.getElementById("video-feed");
+    const canvas = document.getElementById("overlay-canvas");
+    const ctx = canvas.getContext("2d");
     const framingBox = document.getElementById("framing-box");
+    const scaleBadge = document.getElementById("scale-badge");
     const scaleSlider = document.getElementById("scale-slider");
+
+    const pawn1Badge = document.getElementById("pawn1-badge");
+    const pawn1CountryEl = document.getElementById("pawn1-country");
+    const pawn2Badge = document.getElementById("pawn2-badge");
+    const pawn2CountryEl = document.getElementById("pawn2-country");
 
     function setScale(val) {
       guideScale = Number(val) / 100;
       const pct = val + "%";
-      const tag = val <= 55 ? " (Celular Lejos)" : val <= 75 ? " (Distancia Cómoda)" : " (Celular Cerca)";
-      scaleBadge.textContent = pct + tag;
+      scaleBadge.textContent = pct + (val <= 55 ? " (Lejos)" : val <= 75 ? " (Cómoda)" : " (Cerca)");
       if (framingBox) {
         framingBox.style.width = pct;
         framingBox.style.height = pct;
@@ -253,7 +348,8 @@
       }
     }
 
-    async function initCamerasAndSensor() {
+    // Iniciar cámara web / smartphone
+    async function initCamera() {
       try {
         if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
           const devices = await navigator.mediaDevices.enumerateDevices();
@@ -264,110 +360,178 @@
             return label.includes("back") || label.includes("rear") || label.includes("trasera") || label.includes("environment");
           });
 
-          if (rearIndex !== -1) {
-            currentCameraIndex = rearIndex;
-          } else if (availableCameras.length > 1) {
-            currentCameraIndex = 1;
-          } else {
-            currentCameraIndex = 0;
-          }
+          if (rearIndex !== -1) currentCameraIndex = rearIndex;
+          else if (availableCameras.length > 1) currentCameraIndex = 1;
+          else currentCameraIndex = 0;
         }
-      } catch (err) {
-        console.warn("No se pudo enumerar cámaras:", err);
-      }
-
-      try {
-        Protobject.HandSensor.start(100, currentCameraIndex);
-
-        const container = document.getElementById("preview-container");
-        const rect = container.getBoundingClientRect();
-
-        Protobject.HandSensor.showPreview({
-          top: rect.top + window.scrollY,
-          left: rect.left + window.scrollX,
-          width: Math.min(640, window.innerWidth - 24),
-          height: 420,
-        });
-
-        Protobject.HandSensor.flip(isFlipped);
-
-        statusText.textContent = "● Cámara Activa (" + (currentCameraIndex === 1 ? "Trasera" : "Cámara " + currentCameraIndex) + ")";
-        statusText.style.background = "#065f46";
-        statusText.style.color = "#34d399";
       } catch (e) {
-        console.error("Error al iniciar HandSensor:", e);
-        statusText.textContent = "Error de cámara";
-        statusText.style.background = "#7f1d1d";
-        statusText.style.color = "#f87171";
+        console.warn("Error enumerando cámaras:", e);
+      }
+      startCurrentStream();
+    }
+
+    async function startCurrentStream() {
+      if (currentStream) {
+        currentStream.getTracks().forEach(t => t.stop());
+      }
+      try {
+        let constraints = {
+          video: {
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+          }
+        };
+        if (availableCameras.length > 0 && availableCameras[currentCameraIndex]) {
+          constraints.video.deviceId = { exact: availableCameras[currentCameraIndex].deviceId };
+        } else {
+          constraints.video.facingMode = "environment";
+        }
+
+        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = currentStream;
+        video.onloadedmetadata = () => {
+          video.play();
+          canvas.width = video.videoWidth || 640;
+          canvas.height = video.videoHeight || 480;
+          requestAnimationFrame(processFrame);
+        };
+      } catch (err) {
+        console.error("Error al iniciar video:", err);
       }
     }
 
     async function switchCamera() {
-      try {
-        if (availableCameras.length === 0 && navigator.mediaDevices) {
-          const devices = await navigator.mediaDevices.enumerateDevices();
-          availableCameras = devices.filter(d => d.kind === "videoinput");
-        }
-
-        if (availableCameras.length > 1) {
-          currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
-        } else {
-          currentCameraIndex = currentCameraIndex === 0 ? 1 : 0;
-        }
-
-        if (Protobject.HandSensor && Protobject.HandSensor.setupWebcam) {
-          await Protobject.HandSensor.setupWebcam(currentCameraIndex);
-          statusText.textContent = "● Cámara Activa (" + (currentCameraIndex === 1 ? "Trasera" : "Frontal") + ")";
-        }
-      } catch (err) {
-        console.error("Error cambiando de cámara:", err);
-      }
-    }
-
-    function toggleFlip() {
-      isFlipped = !isFlipped;
-      Protobject.HandSensor.flip(isFlipped);
-    }
-
-    // Escuchar detección del dedo índice (Landmark 8) y mapear según la escala
-    Protobject.HandSensor.onData((data) => {
-      if (data.landmarks && data.landmarks[0] && data.landmarks[0][8]) {
-        const indexFinger = data.landmarks[0][8];
-        const rawX = Number(indexFinger.x);
-        const rawY = Number(indexFinger.y);
-
-        // Remapeo de coordenadas según el marco de escala centrada
-        const minX = (1 - guideScale) / 2;
-        const minY = (1 - guideScale) / 2;
-        const normX = (rawX - minX) / guideScale;
-        const normY = (rawY - minY) / guideScale;
-
-        const x = Number(normX.toFixed(3));
-        const y = Number(normY.toFixed(3));
-
-        const dentroDelMarco = (x >= -0.05 && x <= 1.05 && y >= -0.05 && y <= 1.05);
-
-        fingerCoords.textContent = dentroDelMarco ? ("X: " + x + " | Y: " + y) : "Fuera de marco";
-
-        // Enviar coordenadas relativas al mapa físico al PC
-        Protobject.Core.send({
-          tipo: "apuntado",
-          x: x,
-          y: y,
-          activo: dentroDelMarco,
-          timestamp: Date.now()
-        }).to("index.html");
-
+      if (availableCameras.length > 1) {
+        currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
       } else {
-        fingerCoords.textContent = "Buscando dedo";
-        Protobject.Core.send({
-          tipo: "apuntado",
-          activo: false
-        }).to("index.html");
+        currentCameraIndex = currentCameraIndex === 0 ? 1 : 0;
       }
-    });
+      startCurrentStream();
+    }
 
-    initCamerasAndSensor();
+    // Identificar país a partir de coordenadas normalizadas del mapa
+    function getCountryFromNormalizedCoords(nx, ny) {
+      let closestCountry = null;
+      let minDistance = 999;
+      for (const target of COORDENADAS_MAPA_FISICO) {
+        const dx = nx - target.x;
+        const dy = ny - target.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < target.r && dist < minDistance) {
+          minDistance = dist;
+          closestCountry = target.country;
+        }
+      }
+      return closestCountry;
+    }
+
+    // Bucle de detección ArUco en tiempo real
+    function processFrame() {
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        
+        let markers = [];
+        try {
+          markers = detector.detect(imageData);
+        } catch (e) {
+          // Detector error handling
+        }
+
+        let peon1Data = { id: 1, pais: null, activo: false, x: 0, y: 0 };
+        let peon2Data = { id: 2, pais: null, activo: false, x: 0, y: 0 };
+
+        // Dibujar y procesar cada marcador detectado
+        for (let i = 0; i < markers.length; i++) {
+          const m = markers[i];
+          const corners = m.corners;
+
+          // Centroide del marcador en píxeles de la cámara
+          const cx = (corners[0].x + corners[1].x + corners[2].x + corners[3].x) / 4;
+          const cy = (corners[0].y + corners[1].y + corners[2].y + corners[3].y) / 4;
+
+          // Normalizar respecto al tamaño del video
+          const rawNormX = cx / canvas.width;
+          const rawNormY = cy / canvas.height;
+
+          // Remapeo según la escala de encuadre centrado
+          const minX = (1 - guideScale) / 2;
+          const minY = (1 - guideScale) / 2;
+          const mapX = (rawNormX - minX) / guideScale;
+          const mapY = (rawNormY - minY) / guideScale;
+
+          // Comprobar si está dentro del marco
+          const dentroDelMarco = (mapX >= -0.05 && mapX <= 1.05 && mapY >= -0.05 && mapY <= 1.05);
+          const paisDetectado = dentroDelMarco ? getCountryFromNormalizedCoords(mapX, mapY) : null;
+
+          // Dibujar contorno visual del marcador en pantalla
+          ctx.beginPath();
+          ctx.moveTo(corners[0].x, corners[0].y);
+          ctx.lineTo(corners[1].x, corners[1].y);
+          ctx.lineTo(corners[2].x, corners[2].y);
+          ctx.lineTo(corners[3].x, corners[3].y);
+          ctx.closePath();
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = m.id === 1 ? "#ffffff" : "#38bdf8";
+          ctx.stroke();
+
+          // Etiqueta flotante sobre el peón
+          const label = (m.id === 1 ? "⚪ Peón 1: " : "⚫ Peón 2: ") + (paisDetectado ? NOMBRES_ESP[paisDetectado] : "Buscando país...");
+          ctx.font = "bold 13px sans-serif";
+          ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+          ctx.fillRect(cx - 60, cy - 25, 130, 20);
+          ctx.fillStyle = m.id === 1 ? "#ffffff" : "#38bdf8";
+          ctx.fillText(label, cx - 55, cy - 10);
+
+          if (m.id === 1) {
+            peon1Data.activo = dentroDelMarco && (paisDetectado !== null);
+            peon1Data.pais = paisDetectado;
+            peon1Data.x = mapX;
+            peon1Data.y = mapY;
+          } else if (m.id === 2) {
+            peon2Data.activo = dentroDelMarco && (paisDetectado !== null);
+            peon2Data.pais = paisDetectado;
+            peon2Data.x = mapX;
+            peon2Data.y = mapY;
+          }
+        }
+
+        // Actualizar HUD visual de Peón Blanco
+        if (peon1Data.activo && peon1Data.pais) {
+          pawn1Badge.textContent = "Sobre Mapa";
+          pawn1Badge.className = "pawn-status status-active";
+          pawn1CountryEl.textContent = NOMBRES_ESP[peon1Data.pais] || peon1Data.pais;
+        } else {
+          pawn1Badge.textContent = "Levantado";
+          pawn1Badge.className = "pawn-status status-idle";
+          pawn1CountryEl.textContent = "Ninguno (Motor Detenido)";
+        }
+
+        // Actualizar HUD visual de Peón Negro
+        if (peon2Data.activo && peon2Data.pais) {
+          pawn2Badge.textContent = "Sobre Mapa";
+          pawn2Badge.className = "pawn-status status-active";
+          pawn2CountryEl.textContent = NOMBRES_ESP[peon2Data.pais] || peon2Data.pais;
+        } else {
+          pawn2Badge.textContent = "Levantado";
+          pawn2Badge.className = "pawn-status status-idle";
+          pawn2CountryEl.textContent = "Ninguno (Motor Detenido)";
+        }
+
+        // Enviar estado de ambos peones al computador por Protobject
+        if (typeof Protobject !== "undefined" && Protobject.Core) {
+          Protobject.Core.send({
+            tipo: "peones_dobles",
+            peonBlanco: peon1Data,
+            peonNegro: peon2Data,
+            timestamp: Date.now()
+          }).to("index.html");
+        }
+      }
+      requestAnimationFrame(processFrame);
+    }
+
+    initCamera();
   </script>
 </body>
 </html>

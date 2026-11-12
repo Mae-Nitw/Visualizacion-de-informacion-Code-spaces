@@ -920,9 +920,10 @@ function startChartRace() {
     const currentRenShare = (countryData.sources && countryData.sources['Renewables'] && countryData.sources['Renewables'].share[idx]) || (countryData.renew_share && countryData.renew_share[idx]) || 0;
     updateSonification(currentRenShare);
 
-    // Actuador Físico Arduino:
-    // Si ganan las energías limpias (>= 50%), encendemos el LED ('1')
-    // Si ganan los fósiles (< 50%), apagamos el LED ('0')
+    // Actuador Físico: Rotores de Turbinas Eólicas sincronizadas con el año actual
+    actualizarTurbinasDuranteCarrera(idx);
+
+    // Actuador Físico Arduino LED (compatibilidad):
     if (currentRenShare >= 50) {
       enviarComandoArduino('1');
     } else {
@@ -937,6 +938,9 @@ function startChartRace() {
       playbackStatus.textContent = 'Carrera completada ✓';
       chartAnimationId = null;
       stopSonification();
+      // Al finalizar la carrera, ambas turbinas físicas quedan girando fijas
+      // con la velocidad final registrada en 2025 hasta mover o levantar el peón
+      actualizarTurbinasDuranteCarrera(years.length - 1);
     }
   }
 
@@ -1042,15 +1046,205 @@ tabTopMenor.addEventListener('click', () => {
   renderTop5(TOP5_MENOR, false);
 });
 
-// Inicialización
+// ==========================================
+// MÓDULO FÍSICO: DUAL TURBINAS EÓLICAS ARDUINO (PEONES DE AJEDREZ)
+// ==========================================
+const turbina1 = {
+  id: 1,
+  color: 'blanco',
+  nombre: 'Turbina 1 (Peón Blanco)',
+  port: null,
+  writer: null,
+  country: null,
+  speed: 0,
+  ultimoEnvio: -1,
+  connected: false
+};
+
+const turbina2 = {
+  id: 2,
+  color: 'negro',
+  nombre: 'Turbina 2 (Peón Negro)',
+  port: null,
+  writer: null,
+  country: null,
+  speed: 0,
+  ultimoEnvio: -1,
+  connected: false
+};
+
+async function conectarArduinoTurbina(tNum) {
+  const t = tNum === 1 ? turbina1 : turbina2;
+  const btn = document.getElementById(tNum === 1 ? 'btn-conn-arduino-1' : 'btn-conn-arduino-2');
+  
+  if (!("serial" in navigator)) {
+    alert("Web Serial API no disponible en este navegador. Por favor usa Chrome o Edge en tu PC para conectar los Arduinos.");
+    return;
+  }
+  
+  try {
+    t.port = await navigator.serial.requestPort();
+    await t.port.open({ baudRate: 9600 });
+    const textEncoder = new TextEncoderStream();
+    textEncoder.readable.pipeTo(t.port.writable);
+    t.writer = textEncoder.writable.getWriter();
+    t.connected = true;
+    
+    if (btn) {
+      btn.textContent = "✓ Conectado";
+      btn.classList.add("connected");
+    }
+    console.log(`✓ ${t.nombre} conectada al puerto USB con éxito.`);
+    
+    // Inicializar velocidad
+    if (t.country) {
+      actualizarTurbinaPais(tNum, t.country);
+    } else {
+      enviarVelocidadTurbina(t, 0);
+    }
+  } catch (err) {
+    console.warn(`Error al conectar ${t.nombre}:`, err);
+  }
+}
+
+async function enviarVelocidadTurbina(t, pct) {
+  t.speed = pct;
+  
+  // Actualizar indicadores UI
+  const fillEl = document.getElementById(t.id === 1 ? 't1-fill' : 't2-fill');
+  const labelEl = document.getElementById(t.id === 1 ? 't1-pct-label' : 't2-pct-label');
+  const rotorIcon = document.getElementById(t.id === 1 ? 't1-rotor-symbol' : 't2-rotor-symbol');
+  
+  if (fillEl) fillEl.style.width = pct + '%';
+  if (labelEl) labelEl.textContent = pct > 0 ? (pct + '%') : '0 RPM';
+  
+  // Animación del rotor visual en pantalla
+  if (rotorIcon) {
+    if (pct > 0) {
+      const dur = Math.max(0.18, (100 - pct) / 60);
+      rotorIcon.style.animation = `spin-slow ${dur.toFixed(2)}s linear infinite`;
+    } else {
+      rotorIcon.style.animation = 'none';
+    }
+  }
+
+  // Enviar comando por Web Serial USB a la placa Arduino (Pin 9)
+  if (t.writer && pct !== t.ultimoEnvio) {
+    t.ultimoEnvio = pct;
+    try {
+      await t.writer.write(pct + "\n");
+    } catch (err) {
+      console.warn(`Error enviando velocidad a ${t.nombre}:`, err);
+    }
+  }
+}
+
+// Cálculo de velocidad de la turbina según datos eólicos en el año index (0 = 2000, 25 = 2025)
+function calcularVelocidadEolica(countryName, yearIdx) {
+  if (!countryName || !energyData || !energyData[countryName]) return 0;
+  const cData = energyData[countryName];
+  if (!cData.sources || !cData.sources.Wind) return 0;
+
+  const windShare = cData.sources.Wind.share;
+  const windGen = cData.sources.Wind.gen;
+  
+  const share = (windShare && windShare[yearIdx] != null) ? windShare[yearIdx] : 0;
+  const gen = (windGen && windGen[yearIdx] != null) ? windGen[yearIdx] : 0;
+  
+  if (gen <= 0.001) return 0; // Sin energía eólica en ese año
+  
+  // Mapeo no-lineal: share de 0.1% a 25% mapea suavemente a 20% - 100%
+  let pct = Math.round(20 + (share / 25) * 80);
+  return Math.min(100, Math.max(0, pct));
+}
+
+function actualizarTurbinaPais(tNum, countryName) {
+  const t = tNum === 1 ? turbina1 : turbina2;
+  t.country = countryName;
+  
+  const nameEl = document.getElementById(tNum === 1 ? 't1-country-name' : 't2-country-name');
+  const genEl = document.getElementById(tNum === 1 ? 't1-gen-val' : 't2-gen-val');
+  const shareEl = document.getElementById(tNum === 1 ? 't1-share-val' : 't2-share-val');
+  
+  if (!countryName) {
+    if (nameEl) nameEl.textContent = tNum === 1 ? 'Coloca el peón blanco en el mapa...' : 'Coloca el peón negro en el mapa...';
+    if (genEl) genEl.textContent = '0 TWh';
+    if (shareEl) shareEl.textContent = '0%';
+    enviarVelocidadTurbina(t, 0); // Motor se detiene
+    return;
+  }
+
+  const displayName = NOMBRES_ESP[countryName] || countryName;
+  if (nameEl) nameEl.textContent = `📍 ${displayName}`;
+
+  // Si hay datos, obtener el último año registrado (2025, idx = 25)
+  if (energyData && energyData[countryName]) {
+    const cData = energyData[countryName];
+    const wGen = cData.sources?.Wind?.gen;
+    const wShare = cData.sources?.Wind?.share;
+    const lastGen = (wGen && wGen.length > 0) ? wGen[wGen.length - 1] : 0;
+    const lastShare = (wShare && wShare.length > 0) ? wShare[wShare.length - 1] : 0;
+
+    if (genEl) genEl.textContent = `${lastGen.toFixed(1)} TWh`;
+    if (shareEl) shareEl.textContent = `${lastShare.toFixed(1)}%`;
+
+    // Si la carrera no está en animación activa, girar con el valor del año final
+    if (!chartAnimationId) {
+      const speed = calcularVelocidadEolica(countryName, 25);
+      enviarVelocidadTurbina(t, speed);
+    }
+  }
+}
+
+// Sincronización en vivo año a año durante la animación
+function actualizarTurbinasDuranteCarrera(yearIdx) {
+  if (turbina1.country) {
+    const sp1 = calcularVelocidadEolica(turbina1.country, yearIdx);
+    enviarVelocidadTurbina(turbina1, sp1);
+    
+    const cData1 = energyData[turbina1.country];
+    if (cData1?.sources?.Wind) {
+      const g = cData1.sources.Wind.gen[yearIdx] || 0;
+      const s = cData1.sources.Wind.share[yearIdx] || 0;
+      const genEl = document.getElementById('t1-gen-val');
+      const shareEl = document.getElementById('t1-share-val');
+      if (genEl) genEl.textContent = `${g.toFixed(1)} TWh`;
+      if (shareEl) shareEl.textContent = `${s.toFixed(1)}%`;
+    }
+  }
+  
+  if (turbina2.country) {
+    const sp2 = calcularVelocidadEolica(turbina2.country, yearIdx);
+    enviarVelocidadTurbina(turbina2, sp2);
+    
+    const cData2 = energyData[turbina2.country];
+    if (cData2?.sources?.Wind) {
+      const g = cData2.sources.Wind.gen[yearIdx] || 0;
+      const s = cData2.sources.Wind.share[yearIdx] || 0;
+      const genEl = document.getElementById('t2-gen-val');
+      const shareEl = document.getElementById('t2-share-val');
+      if (genEl) genEl.textContent = `${g.toFixed(1)} TWh`;
+      if (shareEl) shareEl.textContent = `${s.toFixed(1)}%`;
+    }
+  }
+}
+
+// Inicialización de la aplicación
 window.addEventListener('DOMContentLoaded', async () => {
   await loadEnergyData();
   await renderMap();
   initProtobjectIntegration();
+
+  // Botones de conexión directa para los 2 Arduinos
+  const btnConn1 = document.getElementById('btn-conn-arduino-1');
+  if (btnConn1) btnConn1.addEventListener('click', () => conectarArduinoTurbina(1));
+
+  const btnConn2 = document.getElementById('btn-conn-arduino-2');
+  if (btnConn2) btnConn2.addEventListener('click', () => conectarArduinoTurbina(2));
 });
 
 // ==========================================
-// INTEGRACIÓN PROTOBJECT: SENSOR FÍSICO DE MANO / APUNTADO
+// INTEGRACIÓN PROTOBJECT: PEONES ARUCO & SENSOR FÍSICO
 // ==========================================
 
 const COORDENADAS_MAPA_FISICO = [
@@ -1083,7 +1277,7 @@ const COORDENADAS_MAPA_FISICO = [
 let physicalHoverCountry = null;
 let physicalHoverStartTime = 0;
 let lastSelectedPhysicalCountry = null;
-const HOVER_THRESHOLD_MS = 320; // 320ms con el dedo sostenido sobre el país para activarlo
+const HOVER_THRESHOLD_MS = 320;
 
 function playPhysicalClickFeedback() {
   try {
@@ -1099,9 +1293,7 @@ function playPhysicalClickFeedback() {
     gain.connect(audioCtx.destination);
     osc.start();
     osc.stop(audioCtx.currentTime + 0.1);
-  } catch (e) {
-    // Si el contexto requiere interacción previa
-  }
+  } catch (e) {}
 }
 
 function initProtobjectIntegration() {
@@ -1116,68 +1308,102 @@ function initProtobjectIntegration() {
     return;
   }
 
-  if (badgeText) badgeText.textContent = 'Sensor Mano: Conectado (apunta con el dedo)';
+  if (badgeText) badgeText.textContent = 'Sensor: Listo (esperando peones)';
   if (badgeDot) badgeDot.classList.add('connected');
 
   Protobject.Core.onReceived((data) => {
-    if (!data || data.tipo !== 'apuntado') return;
+    if (!data) return;
 
     if (badgeDot && !badgeDot.classList.contains('connected')) {
       badgeDot.classList.add('connected');
     }
 
-    if (!data.activo) {
-      if (fingerCursor) fingerCursor.style.display = 'none';
-      physicalHoverCountry = null;
+    // 1. RECEPCIÓN DE PEONES DOBLES ARUCO (TURBINAS FÍSICAS)
+    if (data.tipo === 'peones_dobles') {
+      // Peón Blanco -> Turbina 1
+      if (data.peonBlanco && data.peonBlanco.activo && data.peonBlanco.pais) {
+        if (turbina1.country !== data.peonBlanco.pais) {
+          console.log(`⚪ Peón Blanco detectado en: ${data.peonBlanco.pais}`);
+          playPhysicalClickFeedback();
+          actualizarTurbinaPais(1, data.peonBlanco.pais);
+          if (!selectedCountry) selectCountry(data.peonBlanco.pais, null);
+        }
+      } else {
+        if (turbina1.country !== null) {
+          console.log('⚪ Peón Blanco levantado -> Turbina 1 apagada');
+          actualizarTurbinaPais(1, null);
+        }
+      }
+
+      // Peón Negro -> Turbina 2
+      if (data.peonNegro && data.peonNegro.activo && data.peonNegro.pais) {
+        if (turbina2.country !== data.peonNegro.pais) {
+          console.log(`⚫ Peón Negro detectado en: ${data.peonNegro.pais}`);
+          playPhysicalClickFeedback();
+          actualizarTurbinaPais(2, data.peonNegro.pais);
+        }
+      } else {
+        if (turbina2.country !== null) {
+          console.log('⚫ Peón Negro levantado -> Turbina 2 apagada');
+          actualizarTurbinaPais(2, null);
+        }
+      }
       return;
     }
 
-    // Posicionar cursor visual en la pantalla
-    if (fingerCursor && mapSection) {
-      const rect = mapSection.getBoundingClientRect();
-      const posX = data.x * rect.width;
-      const posY = data.y * rect.height;
-
-      fingerCursor.style.display = 'flex';
-      fingerCursor.style.left = posX + 'px';
-      fingerCursor.style.top = posY + 'px';
-    }
-
-    // Calcular país más cercano
-    let closestCountry = null;
-    let minDistance = 999;
-
-    for (const target of COORDENADAS_MAPA_FISICO) {
-      const dx = data.x - target.x;
-      const dy = data.y - target.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (dist < target.r && dist < minDistance) {
-        minDistance = dist;
-        closestCountry = target.country;
+    // 2. RECEPCIÓN DE APUNTADO CON DEDO (COMPATIBILIDAD)
+    if (data.tipo === 'apuntado') {
+      if (!data.activo) {
+        if (fingerCursor) fingerCursor.style.display = 'none';
+        physicalHoverCountry = null;
+        return;
       }
-    }
 
-    if (closestCountry) {
-      const nombreEsp = NOMBRES_ESP[closestCountry] || closestCountry;
-      if (fingerLabel) fingerLabel.textContent = 'Tocando: ' + nombreEsp;
+      if (fingerCursor && mapSection) {
+        const rect = mapSection.getBoundingClientRect();
+        const posX = data.x * rect.width;
+        const posY = data.y * rect.height;
 
-      if (physicalHoverCountry === closestCountry) {
-        if (Date.now() - physicalHoverStartTime >= HOVER_THRESHOLD_MS) {
-          if (lastSelectedPhysicalCountry !== closestCountry) {
-            lastSelectedPhysicalCountry = closestCountry;
-            console.log('Selección física confirmada: ' + closestCountry);
-            playPhysicalClickFeedback();
-            selectCountry(closestCountry, null);
+        fingerCursor.style.display = 'flex';
+        fingerCursor.style.left = posX + 'px';
+        fingerCursor.style.top = posY + 'px';
+      }
+
+      let closestCountry = null;
+      let minDistance = 999;
+
+      for (const target of COORDENADAS_MAPA_FISICO) {
+        const dx = data.x - target.x;
+        const dy = data.y - target.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < target.r && dist < minDistance) {
+          minDistance = dist;
+          closestCountry = target.country;
+        }
+      }
+
+      if (closestCountry) {
+        const nombreEsp = NOMBRES_ESP[closestCountry] || closestCountry;
+        if (fingerLabel) fingerLabel.textContent = 'Tocando: ' + nombreEsp;
+
+        if (physicalHoverCountry === closestCountry) {
+          if (Date.now() - physicalHoverStartTime >= HOVER_THRESHOLD_MS) {
+            if (lastSelectedPhysicalCountry !== closestCountry) {
+              lastSelectedPhysicalCountry = closestCountry;
+              playPhysicalClickFeedback();
+              selectCountry(closestCountry, null);
+              actualizarTurbinaPais(1, closestCountry);
+            }
           }
+        } else {
+          physicalHoverCountry = closestCountry;
+          physicalHoverStartTime = Date.now();
         }
       } else {
-        physicalHoverCountry = closestCountry;
-        physicalHoverStartTime = Date.now();
+        if (fingerLabel) fingerLabel.textContent = 'Mano detectada';
+        physicalHoverCountry = null;
       }
-    } else {
-      if (fingerLabel) fingerLabel.textContent = 'Mano detectada';
-      physicalHoverCountry = null;
     }
   });
 }

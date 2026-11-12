@@ -1247,3 +1247,188 @@ body {
   border-radius: 6px;
   white-space: nowrap;
 }
+
+
+/* ==========================================
+   PANEL DE DUAL TURBINAS EÓLICAS FÍSICAS (ARDUINO)
+   ========================================== */
+.dual-turbines-panel {
+  background: var(--bg-surface-elevated, #17243c);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 10px 0 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.dual-turbines-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 8px;
+}
+
+.dual-turbines-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+  color: #38bdf8;
+}
+
+.turbine-spinning-icon {
+  font-size: 1.15rem;
+  display: inline-block;
+  animation: spin-slow 4s linear infinite;
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.turbines-subtag {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.turbines-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.turbine-card {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.3s;
+}
+
+.turbine-white-card {
+  border-top: 3px solid #f8fafc;
+}
+
+.turbine-black-card {
+  border-top: 3px solid #38bdf8;
+}
+
+.turbine-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pawn-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.tag-white {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.tag-black {
+  background: #0284c7;
+  color: #ffffff;
+}
+
+.btn-usb-connect {
+  background: #1e293b;
+  border: 1px solid #475569;
+  color: #cbd5e1;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-usb-connect:hover {
+  background: #334155;
+  color: #f8fafc;
+}
+
+.btn-usb-connect.connected {
+  background: #065f46;
+  border-color: #10b981;
+  color: #34d399;
+}
+
+.turbine-country-display {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  min-height: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.turbine-gauge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rotor-symbol {
+  font-size: 1rem;
+  display: inline-block;
+  transition: transform 0.1s linear;
+}
+
+.rotor-meter-bar {
+  flex: 1;
+  height: 8px;
+  background: #1e293b;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid #334155;
+}
+
+.rotor-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.25s ease-out;
+}
+
+.fill-white {
+  background: linear-gradient(90deg, #94a3b8, #f8fafc);
+  box-shadow: 0 0 8px rgba(248, 250, 252, 0.4);
+}
+
+.fill-cyan {
+  background: linear-gradient(90deg, #0284c7, #38bdf8);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+}
+
+.rotor-val {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #38bdf8;
+  min-width: 32px;
+  text-align: right;
+}
+
+.turbine-details-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  border-top: 1px dotted rgba(255, 255, 255, 0.08);
+  padding-top: 4px;
+}
+
+.turbine-details-row strong {
+  color: #f1f5f9;
+}

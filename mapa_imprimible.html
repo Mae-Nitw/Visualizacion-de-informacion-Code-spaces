@@ -119,6 +119,52 @@
       background: #0284c7;
     }
 
+    /* Tarjeta de marcadores para los peones */
+    .peones-print-card {
+      margin-top: 16px;
+      background: #ffffff;
+      border: 2px dashed #64748b;
+      border-radius: 8px;
+      padding: 12px 16px;
+      width: 720px;
+      box-sizing: border-box;
+      text-align: center;
+    }
+    .peones-print-card h3 {
+      margin: 0 0 6px;
+      font-size: 0.95rem;
+      color: #0369a1;
+    }
+    .peones-print-card p {
+      margin: 0 0 10px;
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+    .markers-row {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+    }
+    .marker-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      border: 1px dotted #94a3b8;
+      padding: 8px 14px;
+      border-radius: 6px;
+      background: #f8fafc;
+    }
+    .marker-img {
+      width: 55px;
+      height: 55px;
+      border: 1px solid #cbd5e1;
+    }
+    .marker-item span {
+      font-size: 0.75rem;
+      color: #1e293b;
+    }
+
     .zone-north { border-color: #f97316; }
     .zone-north .target-circle { background: #f97316; }
     .zone-central { border-color: #10b981; }
@@ -237,6 +283,24 @@
       </div>
       <div class="country-pin zone-south" style="left: 63.9%; top: 85.9%;">
         <span class="target-circle"></span> Argentina
+      </div>
+    </div>
+  </div>
+
+  <!-- Marcadores recortables para los dos peones -->
+  <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+    <div class="peones-print-card">
+      <h3>✂️ Marcadores ArUco para Peones de Ajedrez (Turbinas Físicas)</h3>
+      <p>Recorta estos 2 marcadores con tijeras y pégalos con cinta o pegamento en la cabeza plana de cada peón:</p>
+      <div class="markers-row">
+        <div class="marker-item">
+          <img src="aruco_id1_blanco.png" alt="ID 1 Blanco" class="marker-img" />
+          <span>⚪ <strong>Peón Blanco (ID 1)</strong><br>Controla Turbina 1 (Arduino 1)</span>
+        </div>
+        <div class="marker-item">
+          <img src="aruco_id2_negro.png" alt="ID 2 Negro" class="marker-img" />
+          <span>⚫ <strong>Peón Negro (ID 2)</strong><br>Controla Turbina 2 (Arduino 2)</span>
+        </div>
       </div>
     </div>
   </div>
