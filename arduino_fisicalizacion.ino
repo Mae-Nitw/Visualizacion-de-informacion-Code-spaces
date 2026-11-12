@@ -1,24 +1,28 @@
 // ==========================================================
-// CONTROL DE DUAL TURBINAS EÓLICAS CON 1 ARDUINO POR USB
+// CONTROL DE DUAL TURBINAS EÓLICAS CON 1 ARDUINO (LEONARDO / UNO)
 // Visualización de Información (IIC2026) - Grupo 27
 // ==========================================================
-// - Turbina 1 (Peón Blanco): Servo continuo en Pin Digital 9
-// - Turbina 2 (Peón Negro):  Servo continuo en Pin Digital 10
+// - Turbina 1 (Peón Blanco): Servo continuo en Pin Digital 6
+// - Turbina 2 (Peón Negro):  Servo continuo en Pin Digital 7
 //
-// CONEXIONES DE LOS MOTORES:
-// - Ambos cables Negros / Marrones: GND de Arduino
-// - Ambos cables Rojos:             5V de Arduino (o fuente externa compartida)
-// - Cable Naranja / Amarillo T1:    Pin Digital 9 (PWM)
-// - Cable Naranja / Amarillo T2:    Pin Digital 10 (PWM)
+// CONEXIONES SEGÚN ESQUEMA ARDUINO LEONARDO:
+// - Servo 1 (Blanco):
+//     * Señal (Amarillo):   Pin Digital ~6
+//     * VCC (Rojo):         Pin 5V
+//     * GND (Marrón/Negro): Pin GND
+// - Servo 2 (Negro):
+//     * Señal (Amarillo):   Pin Digital 7
+//     * VCC (Rojo):         Pin 2 de cabezal ICSP (+5V)
+//     * GND (Marrón/Negro): Pin GND superior
 // ==========================================================
 
 #include <Servo.h>
 
-Servo turbinaBlanca; // Turbina 1 (Pin 9)
-Servo turbinaNegra;  // Turbina 2 (Pin 10)
+Servo turbinaBlanca; // Turbina 1 (Pin 6)
+Servo turbinaNegra;  // Turbina 2 (Pin 7)
 
-const int PIN_TURBINA_1 = 9;   // Peón Blanco
-const int PIN_TURBINA_2 = 10;  // Peón Negro
+const int PIN_TURBINA_1 = 6;   // Peón Blanco
+const int PIN_TURBINA_2 = 7;   // Peón Negro
 const int PIN_LED = 13;        // LED integrado en la placa Arduino
 
 // Calibración estándar de servo de rotación continua:
@@ -43,7 +47,7 @@ void setup() {
   turbinaNegra.write(SERVO_STOP);
   digitalWrite(PIN_LED, LOW);
   
-  Serial.println("✓ Arduino Dual Turbinas listo: T1=Pin9, T2=Pin10");
+  Serial.println("✓ Arduino Dual Turbinas listo: T1=Pin6, T2=Pin7");
 }
 
 void loop() {

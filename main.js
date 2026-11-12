@@ -246,37 +246,19 @@ function stopSonification() {
 }
 
 // ==========================================
-// CONEXIÓN DIRECTA A ARDUINO POR USB (Web Serial API)
-// '1' = Ganan limpias (LED encendido)
-// '0' = Ganan fósiles (LED apagado)
-// 'S' = Espera/Standby (LED parpadea cada 0.5s)
+// COMPATIBILIDAD COMANDOS ARDUINO
 // ==========================================
-let arduinoPort = null;
-let arduinoWriter = null;
 let arduinoUltimoEstado = '';
 
 async function conectarArduinoAutomatico() {
-  if (!("serial" in navigator)) return; // Si el navegador no soporta Serial, continúa normal sin fallar
-  if (arduinoPort && arduinoWriter) return;
-
-  try {
-    arduinoPort = await navigator.serial.requestPort();
-    await arduinoPort.open({ baudRate: 9600 });
-    const textEncoder = new TextEncoderStream();
-    textEncoder.readable.pipeTo(arduinoPort.writable);
-    arduinoWriter = textEncoder.writable.getWriter();
-    console.log("✓ Arduino conectado con éxito vía USB");
-    enviarComandoArduino('S');
-  } catch (err) {
-    console.warn("Conexión con Arduino no establecida:", err);
-  }
+  // Conexión gestionada mediante el botón dedicado "Conectar Arduino"
 }
 
 async function enviarComandoArduino(cmd) {
   if (arduinoWriter && cmd !== arduinoUltimoEstado) {
     try {
       arduinoUltimoEstado = cmd;
-      await arduinoWriter.write(cmd);
+      await arduinoWriter.write(cmd + "\n");
     } catch (err) {
       console.warn("Error enviando comando a Arduino:", err);
     }
@@ -1047,7 +1029,7 @@ tabTopMenor.addEventListener('click', () => {
 });
 
 // ==========================================
-// MÓDULO FÍSICO: DUAL TURBINAS EÓLICAS (1 ARDUINO: PINES 9 Y 10)
+// MÓDULO FÍSICO: DUAL TURBINAS EÓLICAS (1 ARDUINO: PINES 6 Y 7)
 // ==========================================
 let arduinoPort = null;
 let arduinoWriter = null;
@@ -1056,7 +1038,7 @@ let arduinoConnected = false;
 const turbina1 = {
   id: 1,
   color: 'blanco',
-  nombre: 'Turbina 1 (Peón Blanco - Pin 9)',
+  nombre: 'Turbina 1 (Peón Blanco - Pin 6)',
   country: null,
   speed: 0,
   ultimoEnvio: -1
@@ -1065,7 +1047,7 @@ const turbina1 = {
 const turbina2 = {
   id: 2,
   color: 'negro',
-  nombre: 'Turbina 2 (Peón Negro - Pin 10)',
+  nombre: 'Turbina 2 (Peón Negro - Pin 7)',
   country: null,
   speed: 0,
   ultimoEnvio: -1
@@ -1087,10 +1069,10 @@ async function conectarArduinoUnico() {
     arduinoConnected = true;
     
     if (btn) {
-      btn.textContent = "✓ Arduino Conectado (Pines 9 & 10)";
+      btn.textContent = "✓ Arduino Conectado (Pines 6 & 7)";
       btn.classList.add("connected");
     }
-    console.log("✓ Arduino conectado con éxito: Pin 9 (Turbina Blanca), Pin 10 (Turbina Negra)");
+    console.log("✓ Arduino conectado con éxito: Pin 6 (Turbina Blanca), Pin 7 (Turbina Negra)");
     
     // Inicializar velocidades actuales
     if (turbina1.country) actualizarTurbinaPais(1, turbina1.country);
@@ -1124,7 +1106,7 @@ async function enviarVelocidadTurbina(t, pct) {
     }
   }
 
-  // Enviar comando al Arduino único por USB ("T1:65\n" para Pin 9 o "T2:80\n" para Pin 10)
+  // Enviar comando al Arduino único por USB ("T1:65\n" para Pin 6 o "T2:80\n" para Pin 7)
   if (arduinoWriter && pct !== t.ultimoEnvio) {
     t.ultimoEnvio = pct;
     const prefix = t.id === 1 ? "T1:" : "T2:";
@@ -1226,16 +1208,24 @@ function actualizarTurbinasDuranteCarrera(yearIdx) {
   }
 }
 
-// Inicialización de la aplicación
-window.addEventListener('DOMContentLoaded', async () => {
+// Inicialización de la aplicación (resistente a cualquier estado de carga del DOM)
+async function iniciarAplicacion() {
   await loadEnergyData();
   await renderMap();
   initProtobjectIntegration();
 
-  // Botón de conexión única para el Arduino con 2 motores (Pin 9 y 10)
+  // Botón de conexión única para el Arduino con 2 motores (Pin 6 y 7)
   const btnConn = document.getElementById('btn-conn-arduino');
-  if (btnConn) btnConn.addEventListener('click', conectarArduinoUnico);
-});
+  if (btnConn) {
+    btnConn.addEventListener('click', conectarArduinoUnico);
+  }
+}
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', iniciarAplicacion);
+} else {
+  iniciarAplicacion();
+}
 
 // ==========================================
 // INTEGRACIÓN PROTOBJECT: PEONES ARUCO & SENSOR FÍSICO
