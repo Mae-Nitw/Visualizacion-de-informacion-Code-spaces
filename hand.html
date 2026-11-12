@@ -139,6 +139,75 @@
       cursor: pointer;
     }
 
+    /* Panel de selección táctil rápida / infalible */
+    .manual-touch-panel {
+      background: #1e293b;
+      border: 1px solid #0284c7;
+      border-radius: 10px;
+      padding: 10px;
+      margin: 8px auto;
+      max-width: 540px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .touch-tabs {
+      display: flex;
+      gap: 6px;
+    }
+    .touch-tab {
+      flex: 1;
+      padding: 7px 10px;
+      border-radius: 6px;
+      border: 2px solid transparent;
+      background: #334155;
+      color: #94a3b8;
+      font-weight: 700;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .touch-tab.active-white {
+      background: #f8fafc;
+      color: #0f172a;
+      border-color: #38bdf8;
+    }
+    .touch-tab.active-black {
+      background: #0284c7;
+      color: #ffffff;
+      border-color: #38bdf8;
+    }
+    .touch-select-row {
+      display: flex;
+      gap: 6px;
+    }
+    .country-dropdown {
+      flex: 1;
+      background: #0f172a;
+      border: 1px solid #38bdf8;
+      color: #f8fafc;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      outline: none;
+      font-weight: 600;
+    }
+    .btn-lift {
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .btn-lift:hover { background: #dc2626; }
+    .touch-hint {
+      font-size: 0.73rem;
+      color: #94a3b8;
+    }
+
     #preview-container {
       margin: 8px auto;
       width: 100%;
@@ -249,6 +318,49 @@
     </div>
   </div>
 
+  <!-- Selector Táctil / Fallback Inmediato e Infalible -->
+  <div class="manual-touch-panel">
+    <div style="font-size:0.75rem; color:#38bdf8; font-weight:bold; text-align:left;">
+      🎮 Selector Táctil de Peones (Toca la pantalla o elige un país):
+    </div>
+    <div class="touch-tabs">
+      <button id="btn-select-white" class="touch-tab active-white" onclick="setActivePawnMode(1)">
+        ⚪ Mover Peón Blanco (Pin 6)
+      </button>
+      <button id="btn-select-black" class="touch-tab" onclick="setActivePawnMode(2)">
+        ⚫ Mover Peón Negro (Pin 7)
+      </button>
+    </div>
+    <div class="touch-select-row">
+      <select id="country-select-touch" class="country-dropdown" onchange="onManualSelectChange(this.value)">
+        <option value="">-- Elige un país para mover el peón --</option>
+        <option value="Chile">🇨🇱 Chile</option>
+        <option value="Brazil">🇧🇷 Brasil</option>
+        <option value="United States">🇺🇸 Estados Unidos</option>
+        <option value="Canada">🇨🇦 Canadá</option>
+        <option value="Mexico">🇲🇽 México</option>
+        <option value="Argentina">🇦🇷 Argentina</option>
+        <option value="Colombia">🇨🇴 Colombia</option>
+        <option value="Peru">🇵🇪 Perú</option>
+        <option value="Uruguay">🇺🇾 Uruguay</option>
+        <option value="Bolivia">🇧🇴 Bolivia</option>
+        <option value="Ecuador">🇪🇨 Ecuador</option>
+        <option value="Venezuela">🇻🇪 Venezuela</option>
+        <option value="Paraguay">🇵🇾 Paraguay</option>
+        <option value="Costa Rica">🇨🇷 Costa Rica</option>
+        <option value="Panama">🇵🇦 Panamá</option>
+        <option value="Guatemala">🇬🇹 Guatemala</option>
+        <option value="Honduras">🇭🇳 Honduras</option>
+        <option value="Nicaragua">🇳🇮 Nicaragua</option>
+        <option value="Cuba">🇨🇺 Cuba</option>
+      </select>
+      <button class="btn-lift" onclick="levantarPeonActivo()" title="Levantar peón seleccionado">
+        🛑 Quitar
+      </button>
+    </div>
+    <div class="touch-hint">💡 <em>Tip de respaldo:</em> Puedes tocar directamente la pantalla sobre cualquier país para colocar el peón seleccionado.</div>
+  </div>
+
   <div id="preview-container">
     <video id="video-feed" playsinline autoplay muted></video>
     <canvas id="overlay-canvas"></canvas>
@@ -346,6 +458,83 @@
       if (framingBox) {
         framingBox.style.display = overlayVisible ? "flex" : "none";
       }
+    }
+
+    let activePawnMode = 1; // 1: Blanco (Pin 6), 2: Negro (Pin 7)
+    let peon1Manual = { activo: false, pais: null };
+    let peon2Manual = { activo: false, pais: null };
+    let peon1LastSeen = 0;
+    let peon1LastPais = null;
+    let peon2LastSeen = 0;
+    let peon2LastPais = null;
+    const PERSISTENCIA_MS = 2500; // 2.5s de gracia para que no se apague por un parpadeo
+
+    function setActivePawnMode(m) {
+      activePawnMode = m;
+      const bW = document.getElementById('btn-select-white');
+      const bB = document.getElementById('btn-select-black');
+      if (bW) bW.className = 'touch-tab' + (m === 1 ? ' active-white' : '');
+      if (bB) bB.className = 'touch-tab' + (m === 2 ? ' active-black' : '');
+    }
+
+    function onManualSelectChange(country) {
+      if (!country) return;
+      colocarPeonManualmente(activePawnMode, country);
+    }
+
+    function colocarPeonManualmente(pawnId, country) {
+      if (pawnId === 1) {
+        peon1Manual.activo = true;
+        peon1Manual.pais = country;
+        peon1LastSeen = Date.now() + 10000000;
+        peon1LastPais = country;
+      } else {
+        peon2Manual.activo = true;
+        peon2Manual.pais = country;
+        peon2LastSeen = Date.now() + 10000000;
+        peon2LastPais = country;
+      }
+      actualizarHUDyProtobject();
+    }
+
+    function levantarPeonActivo() {
+      if (activePawnMode === 1) {
+        peon1Manual.activo = false;
+        peon1Manual.pais = null;
+        peon1LastSeen = 0;
+        peon1LastPais = null;
+      } else {
+        peon2Manual.activo = false;
+        peon2Manual.pais = null;
+        peon2LastSeen = 0;
+        peon2LastPais = null;
+      }
+      const sel = document.getElementById('country-select-touch');
+      if (sel) sel.value = '';
+      actualizarHUDyProtobject();
+    }
+
+    const previewContainer = document.getElementById("preview-container");
+    if (previewContainer) {
+      previewContainer.addEventListener('click', (e) => {
+        const rect = previewContainer.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+        const rawNormX = clickX / rect.width;
+        const rawNormY = clickY / rect.height;
+
+        const minX = (1 - guideScale) / 2;
+        const minY = (1 - guideScale) / 2;
+        const mapX = (rawNormX - minX) / guideScale;
+        const mapY = (rawNormY - minY) / guideScale;
+
+        const country = getCountryFromNormalizedCoords(mapX, mapY);
+        if (country) {
+          colocarPeonManualmente(activePawnMode, country);
+          const sel = document.getElementById('country-select-touch');
+          if (sel) sel.value = country;
+        }
+      });
     }
 
     // Iniciar cámara web / smartphone

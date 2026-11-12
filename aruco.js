@@ -49,7 +49,9 @@ AR.Detector.prototype.detect = function(image){
   
   this.contours = CV.findContours(this.thres, this.binary);
 
-  this.candidates = this.findCandidates(this.contours, image.width * 0.20, 0.05, 10);
+  // minSize calibrado para detectar marcadores pequeños en peones (desde 12px de contorno)
+  var minSize = Math.max(12, image.width * 0.02);
+  this.candidates = this.findCandidates(this.contours, minSize, 0.05, 5);
   this.candidates = this.clockwiseCorners(this.candidates);
   this.candidates = this.notTooNear(this.candidates, 10);
 
