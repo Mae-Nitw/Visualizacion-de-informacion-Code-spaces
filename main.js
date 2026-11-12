@@ -1047,63 +1047,59 @@ tabTopMenor.addEventListener('click', () => {
 });
 
 // ==========================================
-// MÓDULO FÍSICO: DUAL TURBINAS EÓLICAS ARDUINO (PEONES DE AJEDREZ)
+// MÓDULO FÍSICO: DUAL TURBINAS EÓLICAS (1 ARDUINO: PINES 9 Y 10)
 // ==========================================
+let arduinoPort = null;
+let arduinoWriter = null;
+let arduinoConnected = false;
+
 const turbina1 = {
   id: 1,
   color: 'blanco',
-  nombre: 'Turbina 1 (Peón Blanco)',
-  port: null,
-  writer: null,
+  nombre: 'Turbina 1 (Peón Blanco - Pin 9)',
   country: null,
   speed: 0,
-  ultimoEnvio: -1,
-  connected: false
+  ultimoEnvio: -1
 };
 
 const turbina2 = {
   id: 2,
   color: 'negro',
-  nombre: 'Turbina 2 (Peón Negro)',
-  port: null,
-  writer: null,
+  nombre: 'Turbina 2 (Peón Negro - Pin 10)',
   country: null,
   speed: 0,
-  ultimoEnvio: -1,
-  connected: false
+  ultimoEnvio: -1
 };
 
-async function conectarArduinoTurbina(tNum) {
-  const t = tNum === 1 ? turbina1 : turbina2;
-  const btn = document.getElementById(tNum === 1 ? 'btn-conn-arduino-1' : 'btn-conn-arduino-2');
-  
+async function conectarArduinoUnico() {
+  const btn = document.getElementById('btn-conn-arduino');
   if (!("serial" in navigator)) {
-    alert("Web Serial API no disponible en este navegador. Por favor usa Chrome o Edge en tu PC para conectar los Arduinos.");
+    alert("Web Serial API no disponible en este navegador. Por favor usa Google Chrome o Microsoft Edge en tu PC.");
     return;
   }
   
   try {
-    t.port = await navigator.serial.requestPort();
-    await t.port.open({ baudRate: 9600 });
+    arduinoPort = await navigator.serial.requestPort();
+    await arduinoPort.open({ baudRate: 9600 });
     const textEncoder = new TextEncoderStream();
-    textEncoder.readable.pipeTo(t.port.writable);
-    t.writer = textEncoder.writable.getWriter();
-    t.connected = true;
+    textEncoder.readable.pipeTo(arduinoPort.writable);
+    arduinoWriter = textEncoder.writable.getWriter();
+    arduinoConnected = true;
     
     if (btn) {
-      btn.textContent = "✓ Conectado";
+      btn.textContent = "✓ Arduino Conectado (Pines 9 & 10)";
       btn.classList.add("connected");
     }
-    console.log(`✓ ${t.nombre} conectada al puerto USB con éxito.`);
+    console.log("✓ Arduino conectado con éxito: Pin 9 (Turbina Blanca), Pin 10 (Turbina Negra)");
     
-    // Inicializar velocidad
-    if (t.country) {
-      actualizarTurbinaPais(tNum, t.country);
-    } else {
-      enviarVelocidadTurbina(t, 0);
-    }
+    // Inicializar velocidades actuales
+    if (turbina1.country) actualizarTurbinaPais(1, turbina1.country);
+    else enviarVelocidadTurbina(turbina1, 0);
+
+    if (turbina2.country) actualizarTurbinaPais(2, turbina2.country);
+    else enviarVelocidadTurbina(turbina2, 0);
   } catch (err) {
-    console.warn(`Error al conectar ${t.nombre}:`, err);
+    console.warn("Error al conectar Arduino:", err);
   }
 }
 
@@ -1128,11 +1124,12 @@ async function enviarVelocidadTurbina(t, pct) {
     }
   }
 
-  // Enviar comando por Web Serial USB a la placa Arduino (Pin 9)
-  if (t.writer && pct !== t.ultimoEnvio) {
+  // Enviar comando al Arduino único por USB ("T1:65\n" para Pin 9 o "T2:80\n" para Pin 10)
+  if (arduinoWriter && pct !== t.ultimoEnvio) {
     t.ultimoEnvio = pct;
+    const prefix = t.id === 1 ? "T1:" : "T2:";
     try {
-      await t.writer.write(pct + "\n");
+      await arduinoWriter.write(prefix + pct + "\n");
     } catch (err) {
       console.warn(`Error enviando velocidad a ${t.nombre}:`, err);
     }
@@ -1235,12 +1232,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   await renderMap();
   initProtobjectIntegration();
 
-  // Botones de conexión directa para los 2 Arduinos
-  const btnConn1 = document.getElementById('btn-conn-arduino-1');
-  if (btnConn1) btnConn1.addEventListener('click', () => conectarArduinoTurbina(1));
-
-  const btnConn2 = document.getElementById('btn-conn-arduino-2');
-  if (btnConn2) btnConn2.addEventListener('click', () => conectarArduinoTurbina(2));
+  // Botón de conexión única para el Arduino con 2 motores (Pin 9 y 10)
+  const btnConn = document.getElementById('btn-conn-arduino');
+  if (btnConn) btnConn.addEventListener('click', conectarArduinoUnico);
 });
 
 // ==========================================
